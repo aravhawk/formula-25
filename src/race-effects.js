@@ -10,6 +10,15 @@ export class TyreMarks{
     this.mesh.count=0;this.mesh.frustumCulled=false;this.mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
     scene.add(this.mesh);this.cursor=0;this.last=Array(4).fill(null);this.pose=new T.Object3D();
   }
+  snapshot(){
+    const {mesh,cursor,last}=this;
+    return {cursor,last,count:mesh.count,matrices:mesh.instanceMatrix.array.slice(0,mesh.count*16)};
+  }
+  restore({cursor,last,count,matrices}){
+    if(count>this.mesh.instanceMatrix.count||matrices.length!==count*16)return;
+    this.cursor=cursor;this.last=last;this.mesh.count=count;
+    this.mesh.instanceMatrix.array.set(matrices);this.mesh.instanceMatrix.needsUpdate=true;
+  }
   update(d){
     const track=d.circuit,road=track.at(d.distance),cs=Math.cos(d.heading),sn=Math.sin(d.heading);
     for(let wheel=0;wheel<4;wheel++){

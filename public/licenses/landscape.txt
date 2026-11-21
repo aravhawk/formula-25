@@ -4,7 +4,7 @@ Roads are aligned to the F1 circuits geographic database, © 2019–2025 Tomisla
 https://github.com/bacinger/f1-circuits
 GPS, speed, shift ratios and lap timing are derived from OpenF1. Calendar and grids are from Jolpica.
 
-Building databases (public/season/buildings-*.json) © OpenStreetMap contributors. Distributed under the Open Data Commons Open Database License 1.0. Derived via OpenMapTiles and OpenFreeMap. Scripts/landscape.py rebuilds the derived data.
+Building databases (public/season/buildings-*.json) © OpenStreetMap contributors. Distributed under the Open Data Commons Open Database License 1.0. Derived via OpenMapTiles and OpenFreeMap. scripts/landscape.py rebuilds the derived data.
 https://www.openstreetmap.org/copyright
 https://opendatacommons.org/licenses/odbl/1-0/
 https://openfreemap.org

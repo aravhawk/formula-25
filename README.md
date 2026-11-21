@@ -2,6 +2,8 @@
 
 Drive Max Verstappen’s No. 1 Oracle Red Bull Racing RB21 from the cockpit on all 24 circuits of the 2025 Formula 1 calendar. Standalone events and a saved drivers’ championship include 19 AI rivals and the six Sprint weekends.
 
+![Formula 25 garage artwork](public/assets/paddock-cover.webp)
+
 ## Run locally
 
 Install Node.js 24 LTS and npm. The circuits, textures and fonts ship with the repository.
@@ -18,6 +20,14 @@ Open the local URL printed by Vite. Choose **First drive** to learn the controls
 ## Deploy to Vercel
 
 Import the GitHub repository as a new Vercel project. Use the repository root, the **Vite** preset and Node.js **24.x**. The included configuration runs `npm ci`, builds with `npm run build` and serves `dist`. The app needs no API keys, server database or environment variables. Use the same production domain across releases so players keep access to their browser saves.
+
+## Autosave and recovery
+
+Choose **Resume race** in the garage to continue on the same device, browser profile and site. Qualifying, Sprint, first drive and championship sessions use the same save slot. Choose **Discard save** to clear the slot. Starting another drive asks before replacing it. **Save and return to garage** keeps the session. Resuming it in another tab transfers saving to that tab.
+
+While driving, the game requests an IndexedDB checkpoint every half second. It records all cars, track positions, speeds, gearing, tyre and suspension state, damage, pit progress, lap and sector clocks, race order, assists and practice prompts. It also records the cockpit view state and available tyre marks. Pause, page hide and exit request an immediate save with a synchronous local-storage backup. On return, the race clock continues from the saved time.
+
+Sudden power loss can recover only the last committed checkpoint. A busy disk, browser eviction, private browsing or clearing site data can reduce or erase recovery. If the browser refuses writes, the cockpit displays a warning. Saves stay on the device. A Vercel preview URL and the production domain have separate storage.
 
 ## Driving
 
@@ -45,13 +55,21 @@ The production preview listens on port 4173. The build in `dist` can also be ser
 
 ## Data and simulation
 
-GPS racing lines, elevation, sector splits and observed DRS usage come from 2025 OpenF1 sessions. Baku and Las Vegas use practice data. The 2025 racing line is registered to a geographic circuit map. Where the map diverges from the recorded layout the fit falls back toward the driven path. The AI pace envelope uses the recorded speed trace. Gear spacing is fitted to measured engine RPM per km/h. Topography uses AWS Terrain Tiles, with road-relative grading at the track edge. Each venue has a georeferenced 2025 Sentinel-2 mosaic and nearby OSM building envelopes. Building heights depend on map coverage. Roofs, facade finishes, grandstands, trees and kerbs are reconstructed. The graphics settings include adaptive, performance and ultra quality. Hardware WebGPU is preferred when a test frame presents successfully, with WebGL 2 and Canvas fallbacks. The full 3D paths use environment lighting, antialiasing, local shadow maps and rear-facing scene capture. The software path uses reduced geometry, adaptive resolution and projected mirrors. At high refresh rates, adaptive resolution targets an 8.33 ms frame. The HUD reports average presented fps and the 95th-percentile frame interval. Jolpica supplies the event calendar, driver rosters, grids and qualifying times. Rebuilding data is optional and requires Python, NumPy, SciPy, requests and Pillow. Run season.py before qualifying.py and sprints.py. Run landscape.py afterward to rebuild the surroundings with rasterio, pyproj, shapely and mapbox-vector-tile. The geographic data and imagery attribution is in public/licenses/landscape.txt.
+### Circuits and opponents
 
-The car is the RB21, the Red Bull Racing car that competed in 2025, entered as Max Verstappen’s No. 1. Handling resolves combined braking, traction and cornering forces at four contact patches. Split-surface braking can lock one front wheel and pull the car toward the higher-grip side. The 120 Hz simulation integrates tyre forces in four substeps and interpolates the view between physics ticks. The qualifying interval compares elapsed time with Verstappen’s recorded time at the same point on the circuit. Cars use swept contact checks and test the chassis against the rail at its actual angle. Fixed trackside objects and the rear-view camera use the rendered scene geometry on the 3D paths. Each tyre samples surface grip, rolling resistance and temperature. Impacts affect aero efficiency and pit service time. Vehicle forces, tyre loads, battery capacity, opponent behaviour, road widths, pit paths, trackside architecture and timing rules are approximations for interactive play. Races use dry conditions. Driver standings use Grand Prix and Sprint points with countback on Grand Prix results. Independent fan simulation.
+The racing line, elevation, sector splits and observed DRS usage follow 2025 OpenF1 sessions. Baku and Las Vegas use practice data. The recorded lines are aligned to geographic circuit maps, with the driven path taking precedence where the layout diverges. AI pace follows the recorded speed trace. Calendar, grid and qualifying data come from Jolpica. [OpenF1](https://openf1.org/) · [Jolpica](https://api.jolpi.ca/ergast/f1/2025.json)
 
-- https://openf1.org/
-- https://api.jolpi.ca/ergast/f1/2025.json
-- https://global.honda/en/F1/machine/2025_RedBullRB21/
+Each venue has a terrain grid, a georeferenced 2025 Sentinel-2 mosaic and nearby OpenStreetMap building footprints. Building heights depend on map coverage. Road widths, roofs, facades, grandstands and kerbs are reconstructed. [Geographic data and imagery credits](public/licenses/landscape.txt)
+
+### RB21 and race rules
+
+The 120 Hz simulation resolves braking, traction and cornering at four contact patches, with four tyre-force substeps per tick. Gear spacing follows measured engine RPM and road speed. Each wheel samples surface grip, rolling resistance and temperature. Swept contact checks account for the chassis angle at the rails. Impacts affect aero efficiency and pit service time. Vehicle forces, battery capacity, pit paths and opponent behavior are gameplay approximations. [RB21 reference specifications](https://global.honda/en/F1/machine/2025_RedBullRB21/)
+
+Races run in dry conditions. Qualifying compares the player's elapsed time to Verstappen's reference lap at the same station. Championship standings combine Grand Prix and Sprint points, with countback on Grand Prix results.
+
+### Graphics
+
+The game checks WebGPU presentation, with WebGL 2 and lightweight Canvas fallbacks. The 3D paths use environment lighting, local shadow maps and rear-facing scene capture. Adaptive resolution targets an 8.33 ms frame on high-refresh displays. The HUD reports average presented fps and the 95th-percentile frame interval.
 
 ## Project layout
 

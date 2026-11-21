@@ -120,3 +120,5 @@ dialog{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-heigh
 @media(max-height:560px) and (min-width:550px){.topbar{height:46px}.hero{padding-block:0}.hero h1{font-size:64px;margin-block:2px 4px}.driver-line{font-size:18px}.dock>*{padding-block:8px}.setup{gap:4px}.chips button{padding-block:4px}.hintbar{min-height:30px}
  .hud{padding:4px 8px}.bigtime{font-size:24px}.telemetry canvas{width:65px;height:40px}#touch button{height:34px}.telemetry{bottom:48px}.perf{top:calc(3% + 60px)}#coach{padding:6px 11px}#coach strong{font-size:19px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+#saveWarning{position:absolute;bottom:5rem;left:var(--gutter);max-width:24rem;background:var(--panel);color:var(--accent);padding:.5rem .8rem;font-size:14px}

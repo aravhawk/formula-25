@@ -26,10 +26,12 @@ export class Session{
     this.pose=Object.create(game.player);
     this.before={distance:game.player.distance,heading:game.player.heading,offset:game.player.offset};
     this.line=true;this.keys=new Set();this.touches=new Map();this.lastButtons=[];this.abort=new AbortController();
-    this.paused=false;this.active=true;this.previous=0;this.acc=0;this.hudAfter=0;this.held=0;shown.clear();this.readout=read('readout','on')==='on';
+    this.phase='driving';this.nextSave=0;this.paused=true;this.active=true;this.previous=0;this.acc=0;this.hudAfter=0;this.held=0;shown.clear();this.readout=read('readout','on')==='on';
     const on=(target,type,callback)=>target.addEventListener(type,callback,{signal:this.abort.signal});
     on(window,'resize',()=>this.resize());on(window,'blur',()=>this.pause());
-    on(document,'visibilitychange',()=>{if(document.hidden)this.pause();});
+    on(document,'visibilitychange',()=>{if(document.hidden){if(this.paused)this.hooks.save(this,true);else this.pause();}});
+    on(window,'pagehide',()=>this.hooks.save(this,true));
+    on(document,'freeze',()=>this.hooks.save(this,true));
     on(window,'keydown',event=>{
       if(this.paused||!this.active||document.querySelector('dialog[open]'))return;
       const key=event.code;
@@ -57,13 +59,13 @@ export class Session{
       on($('endPractice'),'click',()=>this.endPractice());
       $('radio').hidden=true;
     }
-    this.resize();this.frame=this.frame.bind(this);this.frameId=requestAnimationFrame(this.frame);
+    this.resize();this.frame=this.frame.bind(this);
   }
   // The control card shows itself on the grid and for the opening seconds. H pins or hides it.
   toggleHelp(){this.help=!$('keys').classList.contains('show');$('keys').classList.toggle('show',this.help);}
   endPractice(){
     cancelAnimationFrame(this.frameId);audio.silence();this.paused=true;
-    this.keys.clear();this.touches.clear();this.hooks.briefing(this);
+    this.phase='briefing';this.keys.clear();this.touches.clear();this.hooks.save(this,true);this.hooks.briefing(this);
   }
   resize(){
     const w=$('race').clientWidth,h=$('race').clientHeight;
@@ -85,7 +87,7 @@ export class Session{
   }
   pause(){if(this.paused||!this.active||this.game.state==='finished')return;
     this.paused=true;cancelAnimationFrame(this.frameId);this.keys.clear();this.touches.clear();audio.silence();this.hooks.pause(this);}
-  resume(){if(!this.paused||!this.active)return;this.paused=false;this.previous=0;this.acc=0;this.frameId=requestAnimationFrame(this.frame);}
+  resume(){if(!this.paused||!this.active)return;this.paused=false;this.previous=0;this.frameId=requestAnimationFrame(this.frame);}
   async restoreGraphics(){
     if(this.recovering)return;
     this.recovering=true;audio.silence();this.keys.clear();this.touches.clear();
@@ -114,7 +116,7 @@ export class Session{
     put('deploy',d.pit?'PIT LIMITER':d.reverse?'REVERSE':d.requested?'BOX · '+g.nextTyre:d.drs?'DRS OPEN':g.drsReady?'DRS AVAILABLE':'ERS '+Math.round(d.energy*100)+'%');
     g.track.drawMap($('raceMap'),d.distance,'#ff6c44');
     $('startLights').hidden=g.state!=='grid';[...$('startLights').children].forEach((l,i)=>l.classList.toggle('on',i<g.lights));
-    if(this.help===null)$('keys').classList.toggle('show',g.state==='grid'||g.raceTime<7||!!g.practice);
+    $('keys').classList.toggle('show',this.help??(g.state==='grid'||g.raceTime<7||!!g.practice));
     put('perf',this.readout?this.world.backend+(this.world.status?' · '+this.world.status:''):'');
     put('radio',g.state==='grid'?'Hold throttle for lights out':g.raceTime<1?'GO':d.pit&&!d.pit.serviced&&d.speed<.5?'Changing tyres':g.clock<g.messageUntil?g.message:'');
   }
@@ -157,7 +159,9 @@ export class Session{
     }
     this.cockpit.draw(d,this.eye,light);audio.update(d);
     if(now>=this.hudAfter){this.hud();if(!this.world.mirrors)updateMirrors(this.game);this.hudAfter=now+80;}
-    if(this.game.state==='finished'){audio.silence();this.game.settle();this.hooks.finish(this);return;}
+    if(this.game.state==='finished'){audio.silence();this.game.settle();this.phase='results';this.paused=true;
+      this.hooks.save(this,true).then(()=>{if(this.active)this.hooks.finish(this);});return;}
+    if(now>=this.nextSave){this.hooks.save(this,false);this.nextSave=now+500;}
     this.frameId=requestAnimationFrame(this.frame);
   }
   dispose(){this.active=false;cancelAnimationFrame(this.frameId);audio.silence();this.abort.abort();this.world.dispose();$('coach').hidden=true;$('radio').hidden=false;$('race').hidden=true;$('garage').hidden=false;}

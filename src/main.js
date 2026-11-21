@@ -1,4 +1,7 @@
 import './style.css';
+import {restoreGame,restoreSession,validateCheckpoint} from './checkpoint.js';
+import {SessionSaves,loadRace,removeRace} from './session-saves.js';
+import {SaveConflict} from './save-store.js';
 import {measureDisplay} from './frame-pacer.js';
 import {Circuit} from './circuit.js';
 import {GrandPrix,FlyingLap,setupCircuit} from './racing.js';
@@ -83,11 +86,11 @@ function gridLabel(){
   const option=$('grid').options[0];
   option.textContent='P'+(gridSlot+1)+(qualResult?' · set by your qualifying lap':' · Verstappen’s 2025 '+(isSprint?'Sprint ':'')+'grid slot');option.dataset.short='Start P'+(gridSlot+1);
 }
-async function select(index,format='gp'){
+async function select(index,format='gp',savedSprint){
   if(!events.length)return;
   idx=mod(index,24);const e=events[idx],champ=mode==='season';
   const sprint=sprints[e.round];
-  isSprint=Boolean(sprint&&(champ?!sprintResults.some(r=>r.round===e.round)&&rounds.length<e.round:format==='sprint'));
+  isSprint=Boolean(sprint&&(savedSprint??(champ?!sprintResults.some(r=>r.round===e.round)&&rounds.length<e.round:format==='sprint')));
   $('formatWrap').hidden=!sprint||champ;$('format').value=isSprint?'sprint':'gp';
   $('start').disabled=$('school').disabled=true;track=null;qualResult=null;
   gridSlot=Math.max(0,isSprint?sprint.grid.indexOf(DRIVER.code):e.grid.findIndex(c=>c.id===DRIVER.code));
@@ -115,12 +118,14 @@ function setStartLabel(){
   $('start').innerHTML='<span><small>'+(done?'All 24 rounds scored':safe(events[idx].name)+' · '+(qualify?'one flying lap':count+(count===1?' lap':' laps')+' from P'+(gridSlot+1)))+'</small><strong>'+
     (done?'Season complete':qualify?'Qualify':isSprint?'Start Sprint':'Race')+'</strong></span>'+icon('go');
   for(const id of ['distance','difficulty','grid','format'])chips(id);
+  if(!restoringSetup)write('weekend',weekend());
+
 }
 $('start').dataset.first='';
 $('format').onchange=()=>select(idx,$('format').value);
 bind('prev',()=>select(idx-1));bind('next',()=>select(idx+1));bind('gpMode',()=>{mode='gp';select(idx);});
 bind('seasonMode',()=>{mode='season';select(Math.min(23,rounds.length));if(rounds.length===24)go('standings');});
-$('grid').onchange=$('distance').onchange=setStartLabel;
+$('grid').onchange=$('difficulty').onchange=$('distance').onchange=setStartLabel;
 function calendarDetail(i){
   const e=events[i],times=references[e.round-1]||{},best=Object.entries(times).sort((a,b)=>a[1]-b[1])[0],sprint=sprints[e.round];
   const surname=id=>(e.grid.find(c=>c.id===id)?.name||id).split(' ').slice(1).join(' ');
@@ -155,7 +160,12 @@ function standingsView(){
     Object.keys(teams).flatMap(team=>(events[0]?.grid||[]).filter(c=>c.team===team)).map((c,i)=>'<tr class="'+(c.id===DRIVER.code?'you':'')+'"><td>'+pad(i+1)+'</td><td>'+teamCell(c)+'</td><td>'+teams[c.team]+'</td></tr>').join('')+'</tbody></table>';
   if($('enterSeason'))bind('enterSeason',()=>{mode='season';select(0);go('race');});
   if($('newSeason'))bind('newSeason',()=>{show('Championship','Reset championship?','<p class="sheet-text">This removes the saved results from all '+rounds.length+' completed rounds on this browser.</p><div class="sheet-actions"><button class="secondary" id="keep" data-first>Keep results</button><button class="primary" id="reset">Reset'+arrow+'</button></div>',null,'narrow');
-    bind('keep',close);bind('reset',()=>{rounds=[];sprintResults=[];write('sprintResults',sprintResults);write('championship',rounds);close();mode='season';select(0);standingsView();});});
+    bind('keep',close);bind('reset',async()=>{
+      const record=await loadRace().catch(()=>null);
+      if(record?.snapshot?.setup?.mode==='season'){
+        try{await removeRace(record.owner);}catch{close();await refreshContinue();return;}
+      }
+      await refreshContinue();rounds=[];sprintResults=[];write('sprintResults',sprintResults);write('championship',rounds);close();mode='season';select(0);standingsView();});});
 }
 function controlsView(){$('controlsBody').innerHTML=controlsPanel(input.device);wireControls($('controlsBody'));}
 const prefs=[
@@ -205,30 +215,101 @@ function debrief(s){
   show('First drive',complete?'Ready for the grid':'Race briefing',
     '<ul class="lesson-list"><li><strong>Gearbox</strong><span>Automatic by default. Q / E or the gamepad bumpers take manual control.</span></li><li><strong>Rear wing</strong><span>Hold Space, gamepad B or DRS inside an eligible zone. In a race, follow within one second from lap two. Brake to close it.</span></li><li><strong>Pit strategy</strong><span>T cycles compounds and B calls the crew. On gamepad use Y then X. Both are also in the pause menu. Soft tyres wear fastest. Hard tyres last longest.</span></li></ul><div class="sheet-actions"><button class="primary" id="fromSchool" data-first>Enter race weekend'+arrow+'</button><button class="secondary" id="returnSchool">Back to garage</button></div>',leave,'narrow');
   if(complete)write('briefed',true);
-  bind('fromSchool',()=>{write('briefed',true);leave();return launch();});
+  bind('fromSchool',async()=>{write('briefed',true);await leave();return launch();});
   bind('returnSchool',leave);
 }
 const credits=()=>show('About the simulation','Circuit & car data','<p class="sheet-text">You drive Max Verstappen’s No. 1 Oracle Red Bull Racing RB21 in a 20-car field. The car follows the published 2025 specification: Honda RBPTH003 1.6-litre turbo hybrid V6, 15,000 rpm limit, eight-speed gearbox and 800 kg minimum weight. Performance, tyre behaviour, damage and AI are game simulations. <a href="https://global.honda/en/F1/machine/2025_RedBullRB21/" target="_blank" rel="noreferrer">Honda specifications ↗</a></p><p class="sheet-text">All 24 road layouts align 2025 RB21 GPS laps with geographic circuit maps. The driving line, speed trace and eight forward ratios use recorded telemetry. Elevation, sector timing and observed DRS usage come from qualifying laps, with practice traces for Baku and Las Vegas. Road width, banking, pit lanes, trackside buildings and landmarks are approximations. <a href="https://openf1.org/" target="_blank" rel="noreferrer">OpenF1 ↗</a></p><p class="sheet-text">The calendar, grids and qualifying times come from Jolpica. Grands Prix score 25–18–15–12–10–8–6–4–2–1 points and the six Sprints 8–7–6–5–4–3–2–1. <a href="https://api.jolpi.ca/ergast/f1/2025.json" target="_blank" rel="noreferrer">Jolpica ↗</a></p><p class="sheet-text">Terrain uses AWS Terrain Tiles and modified Copernicus Sentinel-2 data (2025). Mapped building footprints © OpenStreetMap contributors, via OpenMapTiles and OpenFreeMap, ODbL 1.0. Circuit maps © Tomislav Bacinger. Facades, grandstands and vegetation are illustrative. <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">Map credits ↗</a></p><p class="sheet-text">Independent fan game. Not affiliated with Formula 1, the FIA, Red Bull Racing or Honda.</p>',null,'narrow');
-function leave(){
-  if(active){active.dispose();active=null;}
-  if($('sheet').open)$('sheet').close();dialogClose=null;go('race');
+let restoringSetup=false;
+function weekend(){
+  return {round:idx+1,mode,sprint:isSprint,distance:$('distance').value,difficulty:$('difficulty').value,
+    grid:$('grid').value,gridSlot,qualResult};
+}
+async function applyWeekend(setup,exact=false){
+  restoringSetup=true;
+  try{
+    mode=setup.mode==='season'?'season':'gp';
+    const index=mode==='season'&&!exact?Math.min(23,rounds.length):setup.round-1;
+    await select(index,setup.sprint?'sprint':'gp',exact?setup.sprint:undefined);
+    for(const key of ['distance','difficulty','grid']){
+      if([...$(key).options].some(o=>o.value===setup[key]))$(key).value=setup[key];
+    }
+    if(isSprint)$('grid').value='race';
+    if(index===setup.round-1&&isSprint===setup.sprint&&(exact||Number.isFinite(setup.qualResult))){
+      gridSlot=setup.gridSlot;qualResult=setup.qualResult;gridLabel();
+    }
+    setStartLabel();
+  }finally{restoringSetup=false;}
+}
+function storageWarning(message){
+  $('saveWarning').textContent=message;$('saveWarning').hidden=!message;
+}
+let savedOwner=null;
+async function refreshContinue(){
+  const button=$('continueSession'),discard=$('discardSession');
+  let record;
+  try{record=await loadRace();}catch{button.hidden=discard.hidden=true;return;}
+  savedOwner=record?.owner??null;button.hidden=discard.hidden=!record;
+  button.toggleAttribute('data-first',!!record);
+  if(!record)return;
+  try{
+    const snap=validateCheckpoint(record.snapshot);
+    const event=events[snap.setup.round-1],player=snap.game.cars.find(c=>c.id===DRIVER.id);
+    const title=snap.cockpit.phase==='results'?'View result':snap.setup.kind==='practice'?'Resume first drive':
+      snap.setup.kind==='qualify'?'Resume qualifying':snap.setup.sprint?'Resume Sprint':'Resume race';
+    button.textContent=title+' · '+event.city+' · Lap '+Math.min(snap.game.race.laps,1+player.state.completed);
+    button.title=formatTime(snap.game.race.raceTime)+' elapsed';
+  }catch{button.textContent='Manage unreadable saved session';}
+}
+async function discardSession(owner){
+  try{await removeRace(owner);close();}
+  catch(error){
+    if(error instanceof SaveConflict)close();
+    else show('Browser save','Unable to discard save','<p class="sheet-text">Check the browser’s storage permissions and try again.</p>',null,'narrow');
+  }finally{await refreshContinue();}
+}
+bind('discardSession',()=>{
+  const owner=savedOwner;
+  show('Browser save','Discard this session?','<p class="sheet-text">This removes the saved drive. Championship results and settings are kept.</p><div class="sheet-actions"><button class="secondary" id="keepSave" data-first>Keep save</button><button class="primary" id="discard">Discard session</button></div>',null,'narrow');
+  bind('keepSave',close);bind('discard',()=>discardSession(owner));
+});
+bind('continueSession',async()=>{
+  if(loading||active)return;
+  let record;
+  try{
+    record=await loadRace();if(!record){await refreshContinue();return;}
+    const snapshot=validateCheckpoint(record.snapshot);
+    loading=true;await applyWeekend(snapshot.setup,true);loading=false;
+    await launch(snapshot.setup.kind==='practice',record,record.owner);
+  }catch{
+    loading=false;
+    show('Browser save','Saved session unavailable','<p class="sheet-text">Your saved session could not be restored. You can keep it or discard it to start again.</p><div class="sheet-actions"><button class="secondary" id="keepSave" data-first>Keep save</button><button class="primary" id="discard">Discard save</button></div>',null,'narrow');
+    bind('keepSave',close);bind('discard',()=>record?discardSession(record.owner):close());
+  }
+});
+async function leave(){
+  if(active){
+    const s=active;active=null;s.dispose();
+    try{await s.saves.release(s,s.phase!=='driving');}catch{storageWarning('Unable to update browser save.');}
+  }
+  if($('sheet').open)$('sheet').close();dialogClose=null;go('race');await refreshContinue();
 }
 function paused(s){
+  void s.saves.save(s,true);
   const g=s.game,d=g.player;
   const item=(id,label,value='',first='')=>'<button id="'+id+'" class="menu-item"'+first+'><span>'+label+'</span><em>'+value+'</em></button>';
   const stat=(label,value)=>'<div><dt>'+label+'</dt><dd>'+value+'</dd></div>';
   show(g.event.city+' · Lap '+Math.min(g.laps,d.completed+1)+' of '+g.laps,'Paused','<div class="pause-grid"><div><div class="menu">'+item('resume','Resume','',' data-first')+
     (!g.qualifying?item('pit',d.pit?'Pit service':d.requested?'Cancel pit call':'Box this lap')+item('tyre','Next tyres',g.nextTyre):'')+
-    item('gearbox','Gearbox',d.manual?'Manual':'Automatic')+item('line','Racing line',s.line?'On':'Off')+item('sound','Sound',s.audio.muted?'Off':'On')+
-    (d.speed<=.65&&!d.pit?item('reverse',d.reverse?'Select first gear':'Select reverse'):'')+item('exit','Return to garage')+'</div>'+
+    item('pausedgearbox','Gearbox',d.manual?'Manual':'Automatic')+item('pausedline','Racing line',s.line?'On':'Off')+item('pausedsound','Sound',s.audio.muted?'Off':'On')+
+    (d.speed<=.65&&!d.pit?item('reverse',d.reverse?'Select first gear':'Select reverse'):'')+item('exit',s.saves.enabled?'Save and return to garage':'Return to garage')+'</div>'+
     '<dl class="stats">'+stat('Renderer',s.world.backend)+stat('Quality',s.world.ultra?'Ultra':s.world.software?'Performance':s.world.backend==='Canvas'?'Lightweight':'Adaptive')+(s.world.status?stat('Resolution · rate',s.world.status):'')+'</dl></div>'+
-    '<div>'+controlsPanel(input.device)+'</div></div>',()=>s.resume(),'wide');
+    '<div>'+($('saveWarning').hidden?'':'<p>'+safe($('saveWarning').textContent)+'</p>')+controlsPanel(input.device)+'</div></div>',()=>s.resume(),'wide');
   wireControls($('sheetBody'));
   if($('reverse'))bind('reverse',()=>{d.toggleReverse();close();});
   bind('resume',close);bind('exit',()=>{leave();});
-  bind('gearbox',()=>{d.manual=!d.manual;if(!d.manual)d.updateGear();write('gearbox',d.manual?'manual':'auto');paused(s);});
-  bind('line',()=>{s.line=!s.line;write('line',s.line?'on':'off');paused(s);});
-  bind('sound',()=>{s.audio.muted=!s.audio.muted;write('mute',s.audio.muted);paused(s);});
+  bind('pausedgearbox',()=>{d.manual=!d.manual;if(!d.manual)d.updateGear();write('gearbox',d.manual?'manual':'auto');paused(s);});
+  bind('pausedline',()=>{s.line=!s.line;write('line',s.line?'on':'off');paused(s);});
+  bind('pausedsound',()=>{s.audio.muted=!s.audio.muted;write('mute',s.audio.muted);paused(s);});
   if($('pit')){bind('pit',()=>{g.requestPit();paused(s);});bind('tyre',()=>{g.pickTyre();paused(s);});}
 }
 function finish(s){
@@ -238,22 +319,30 @@ function finish(s){
     gridSlot=rivals.filter(r=>Number.isFinite(refs[r.id])&&refs[r.id]<last).length;
     qualResult=last;gridLabel();$('grid').value='race';setStartLabel();
     show('Qualifying · '+e.city,'P'+(gridSlot+1)+' on the grid','<p class="sheet-text">Flying lap <b>'+formatTime(last)+'</b>. Your grid position compares it with each rival’s best recorded 2025 qualifying lap at this venue.</p><div class="sheet-actions"><button class="primary" id="toRace" data-first>Start Grand Prix'+arrow+'</button></div>',leave,'narrow');
-    bind('toRace',()=>{leave();launch();});return;
+    bind('toRace',async()=>{await leave();launch();});return;
   }
   const rows=g.classification(),you=rows.find(r=>r.id===DRIVER.id);
+  if(mode==='season'){
+    rounds=read('championship',rounds);sprintResults=read('sprintResults',sprintResults);
+  }
   if(mode==='season'&&rounds.length===e.round-1){
     if(g.event.sprint){if(!sprintResults.some(r=>r.round===e.round)){sprintResults.push({round:e.round,rows,sprint:true});write('sprintResults',sprintResults);}}
     else{rounds.push({round:e.round,rows});write('championship',rounds);}
   }
   const winner=rows[0],table=rows.map((r,i)=>'<tr class="'+(r.id===DRIVER.id?'you':'')+'" style="--i:'+i+'"><td>'+pad(r.position)+'</td><td>'+teamCell(r)+'</td><td>'+(teams[r.team]||'')+'</td><td>'+(r.position===1?formatTime(r.time):r.laps<winner.laps?'+'+(winner.laps-r.laps)+' lap': '+'+(r.time-winner.time).toFixed(3))+(r.penalty?' (+30s)':'')+'</td><td>'+r.points+'</td></tr>').join('');
-  const reset=()=>{leave();if(mode==='season'){select(Math.min(23,rounds.length));if(rounds.length===24)go('standings');}};
+  const reset=async()=>{await leave();if(mode==='season'){select(Math.min(23,rounds.length));if(rounds.length===24)go('standings');}};
   const stat=(label,value)=>'<div><dt>'+label+'</dt><dd>'+value+'</dd></div>';
   show('Chequered flag · '+e.city,'P'+you.position+' · '+DRIVER.name,'<dl class="stats">'+stat('Best lap',formatTime(Math.min(...g.player.lapTimes)))+stat('Started','P'+(gridSlot+1))+stat('Pit stops',g.player.stops)+stat('Points',you.points)+'</dl><div class="sheet-actions"><button id="continue" class="primary" data-first>'+(mode==='season'&&rounds.length<24?'Next Grand Prix':'Return to garage')+''+arrow+'</button></div><table class="board"><thead><tr><th>Pos</th><th>Driver</th><th>Team</th><th>Race time</th><th>Pts</th></tr></thead><tbody>'+table+'</tbody></table>',reset,'wide');
   bind('continue',close);
 }
-async function launch(practice=false){
-  if(loading||!track||active||!practice&&mode==='season'&&rounds.length===24)return;
-  const e=events[idx],sprint=sprints[e.round],qualify=!practice&&$('grid').value==='qualify';
+async function launch(practice=false,record=null,expected){
+  if(loading||!track||active||!record&&!practice&&mode==='season'&&rounds.length===24)return;
+  if(expected===undefined&&savedOwner!==null){
+    const owner=savedOwner;
+    show('Browser save','Replace saved session?','<p class="sheet-text">Starting a new session replaces your unfinished drive on this browser.</p><div class="sheet-actions"><button class="secondary" id="keepDrive" data-first>Keep saved session</button><button class="primary" id="replaceDrive">Start new session</button></div>',null,'narrow');
+    bind('keepDrive',close);bind('replaceDrive',()=>{close();launch(practice,null,owner);});return;
+  }
+  const e=events[idx],sprint=sprints[e.round],qualify=record?record.snapshot.setup.kind==='qualify':!practice&&$('grid').value==='qualify';
   $('loadTag').textContent='Round '+e.round+' · '+(practice?'First drive':qualify?'Qualifying':isSprint?'Sprint':'Grand Prix');
   $('loadTitle').textContent=e.name;$('loadSub').textContent=e.circuit;$('loadMap').innerHTML=outline(e.round);$('loadTip').textContent=tips[e.round%tips.length];
   loading=true;$('loading').hidden=false;
@@ -265,8 +354,29 @@ async function launch(practice=false){
     if(practice){game.practice=true;game.player.speed=0;game.player.gear=1;game.player.updateGear();}
     else game.player.manual=read('gearbox','auto')==='manual';
     game.player.assists={tc:{full:1,medium:.5,off:0}[read('traction','medium')],abs:read('abs','on')==='on',steer:read('steering','on')==='on'};
-    active=await Session.create(game,{pause:paused,finish,briefing:debrief});active.audio=audio;active.line=read('line','on')==='on';
-  }catch(err){console.error(err);$('race').hidden=true;$('garage').hidden=false;show('Session','Grid unavailable','<p class="sheet-text">Reload to try again, or launch using the lightweight graphics renderer.</p><a class="secondary" href="?lite=1">Use lightweight graphics</a>',null,'narrow');}
+    if(record)restoreGame(game,record.snapshot.game);
+    const setup=record?.snapshot.setup??{...weekend(),kind:practice?'practice':qualify?'qualify':'race'};
+    const saves=new SessionSaves(setup,storageWarning);storageWarning('');
+    active=await Session.create(game,{pause:paused,finish,briefing:debrief,
+      save:(s,final)=>saves.save(s,final),
+      takeover:async()=>{await leave();show('Browser save','Session continued in another tab','<p class="sheet-text">The other tab is saving this drive. Use Resume in the garage to continue it here.</p>',null,'narrow');}
+    });
+    active.saves=saves;active.audio=audio;active.line=read('line','on')==='on';
+    if(record)restoreSession(active,record.snapshot);
+    try{await saves.claim(active,expected??null);savedOwner=saves.owner;}
+    catch(error){
+      if(error instanceof SaveConflict)throw error;
+      storageWarning('Autosave is unavailable. Check browser storage permissions.');
+    }
+    if(active.phase==='results')finish(active);
+    else if(active.phase==='briefing')debrief(active);
+    else active.resume();
+  }catch(err){console.error(err);
+    if(active){active.dispose();active=null;}
+    await refreshContinue();
+    if(record&&!(err instanceof SaveConflict))throw err;
+    if(err instanceof SaveConflict){show('Browser save','Session changed in another tab','<p class="sheet-text">Return to the garage to continue the latest save.</p>',null,'narrow');return;}
+    $('race').hidden=true;$('garage').hidden=false;show('Session','Grid unavailable','<p class="sheet-text">Reload to try again, or launch using the lightweight graphics renderer.</p><a class="secondary" href="?lite=1">Use lightweight graphics</a>',null,'narrow');}
   finally{loading=false;$('loading').hidden=true;}
 }
 bind('start',()=>read('briefed',false)?launch():firstDrive());
@@ -279,7 +389,7 @@ function act(name){
   else if(name==='ok'){if(scope.contains(document.activeElement))document.activeElement.click();}
   else if(name==='back'||open&&name==='start'){if(open)close();else if(view!=='race')go('race');blip('back');}
   else if(open)return;
-  else if(name==='start'){if(view==='race')$('start').click();}
+  else if(name==='start'){if(view==='race')$(savedOwner?'continueSession':'start').click();}
   else if(name==='tabPrev'||name==='tabNext'){const names=Object.keys(views);go(names[mod(names.indexOf(view)+(name==='tabNext'?1:-1),names.length)]);blip();}
   else if(name==='controls')go('controls');
   else if(name.startsWith('circuit')&&view==='race'&&mode==='gp'){select(idx+(name==='circuitNext'?1:-1));blip();}
@@ -301,6 +411,7 @@ if(matchMedia('(pointer:fine)').matches&&!matchMedia('(prefers-reduced-motion: r
 }
 $('keys').innerHTML=$('loadKeys').innerHTML=controlCard();
 hints();
-Promise.all([json('calendar'),json('qualifying'),json('sprints'),json('outlines')]).then(([list,q,sp,lines])=>{
-  events=list;references=q;sprints=sp;outlines=lines;select(0);go('race');
+Promise.all([json('calendar'),json('qualifying'),json('sprints'),json('outlines')]).then(async([list,q,sp,lines])=>{
+  events=list;references=q;sprints=sp;outlines=lines;await refreshContinue();const setup=read('weekend',null);
+  if(setup&&Number.isInteger(setup.round)&&setup.round>=1&&setup.round<=24)await applyWeekend(setup);else await select(0);go('race');
 }).catch(()=>show('Garage','Season data unavailable','<p class="sheet-text">Serve the game over HTTP and reload this page.</p>',null,'narrow'));
