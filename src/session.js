@@ -84,7 +84,8 @@ export class Session{
       if(hit(4))this.game.player.shift(-1);if(hit(5))this.game.player.shift(1);
       if(hit(2))this.game.requestPit();if(hit(3))this.game.pickTyre();if(hit(8))this.toggleHelp();if(hit(9))this.pause();
       if(hit(12))this.line=!this.line;if(hit(13))this.game.player.toggleReverse();
-      if(pad.busy)noteDevice('pad',pad.family);
+      // Light steering or a feathered pedal drives the car, so it counts as using the pad.
+      if(pad.busy||stick(pad.x)||pedal(6)||pedal(7))noteDevice('pad',pad.family);
       this.lastButtons=pressed;}
     const steer=Number(held.has('right'))-Number(held.has('left'))+stick(pad?.x||0);
     return {steer:clamp(steer,-1,1),throttle:Math.max(+held.has('throttle'),pedal(7)),brake:Math.max(+held.has('brake'),pedal(6)),
