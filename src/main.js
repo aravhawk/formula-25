@@ -326,24 +326,29 @@ function finish(s){
   if(mode==='season'){
     rounds=read('championship',rounds);sprintResults=read('sprintResults',sprintResults);
   }
+  s.pendingStandings=false;
   if(mode==='season'&&rounds.length===e.round-1){
     const sprint=Boolean(e.sprint);
     const updated=recordResult(sprint?sprintResults:rounds,sprint?{round:e.round,rows,sprint:true}:{round:e.round,rows});
-    if(!updated){
-      s.pendingStandings=true;
-      const recovery=s.saves.enabled?'The race checkpoint is kept if you return to the garage.':'Autosave is unavailable for this session. Leaving will lose this result.';
-      show('Championship · '+e.city,'Standings could not be saved','<p class="sheet-text">Allow site storage or free disk space, then retry. '+recovery+'</p><div class="sheet-actions"><button class="primary" id="retryResult" data-first>Retry save</button><button class="secondary" id="leaveResult">'+(s.saves.enabled?'Return to garage':'Leave without saving')+'</button></div>',
-        s.saves.enabled?leave:()=>finish(s),'narrow');
-      bind('retryResult',()=>finish(s));bind('leaveResult',leave);return;
-    }
-    if(sprint)sprintResults=updated;else rounds=updated;
+    if(!updated)s.pendingStandings=true;
+    else if(sprint)sprintResults=updated;
+    else rounds=updated;
   }
-  s.pendingStandings=false;
   const winner=rows[0],table=rows.map((r,i)=>'<tr class="'+(r.id===DRIVER.id?'you':'')+'" style="--i:'+i+'"><td>'+pad(r.position)+'</td><td>'+teamCell(r)+'</td><td>'+(teams[r.team]||'')+'</td><td>'+(r.position===1?formatTime(r.time):r.laps<winner.laps?'+'+(winner.laps-r.laps)+' lap': '+'+(r.time-winner.time).toFixed(3))+(r.penalty?' (+30s)':'')+'</td><td>'+r.points+'</td></tr>').join('');
   const reset=async()=>{await leave();if(mode==='season'){select(Math.min(23,rounds.length));if(rounds.length===24)go('standings');}};
   const stat=(label,value)=>'<div><dt>'+label+'</dt><dd>'+value+'</dd></div>';
-  show('Chequered flag · '+e.city,'P'+you.position+' · '+DRIVER.name,'<dl class="stats">'+stat('Best lap',formatTime(Math.min(...g.player.lapTimes)))+stat('Started','P'+(gridSlot+1))+stat('Pit stops',g.player.stops)+stat('Points',you.points)+'</dl><div class="sheet-actions"><button id="continue" class="primary" data-first>'+(mode==='season'&&rounds.length<24?'Next Grand Prix':'Return to garage')+''+arrow+'</button></div><table class="board"><thead><tr><th>Pos</th><th>Driver</th><th>Team</th><th>Race time</th><th>Pts</th></tr></thead><tbody>'+table+'</tbody></table>',reset,'wide');
-  bind('continue',close);
+  let actions='<div class="sheet-actions"><button id="continue" class="primary" data-first>'+(mode==='season'&&rounds.length<24?'Next Grand Prix':'Return to garage')+arrow+'</button></div>';
+  let dismiss=reset;
+  if(s.pendingStandings){
+    const recovery=s.saves.enabled?'Resume this result from the garage to try again.':'Autosave is unavailable. Leaving will lose this result.';
+    actions='<p class="sheet-text" role="alert">Standings could not be saved. Allow site storage or free disk space, then retry. '+recovery+'</p>'+
+      '<div class="sheet-actions"><button class="primary" id="retryResult" data-first>Retry save</button><button class="secondary" id="leaveResult">'+(s.saves.enabled?'Return to garage':'Leave without saving')+'</button></div>';
+    dismiss=s.saves.enabled?leave:()=>finish(s);
+  }
+  show('Chequered flag · '+e.city,'P'+you.position+' · '+DRIVER.name,'<dl class="stats">'+stat('Best lap',formatTime(Math.min(...g.player.lapTimes)))+stat('Started','P'+(gridSlot+1))+stat('Pit stops',g.player.stops)+stat('Points',you.points)+'</dl>'+actions+
+    '<table class="board"><thead><tr><th>Pos</th><th>Driver</th><th>Team</th><th>Race time</th><th>Pts</th></tr></thead><tbody>'+table+'</tbody></table>',dismiss,'wide');
+  if(s.pendingStandings){bind('retryResult',()=>finish(s));bind('leaveResult',leave);}
+  else bind('continue',close);
 }
 async function launch(practice=false,record=null,expected){
   if(loading||!track||active||!record&&!practice&&mode==='season'&&rounds.length===24)return;
