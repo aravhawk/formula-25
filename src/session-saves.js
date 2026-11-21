@@ -35,8 +35,9 @@ export class SessionSaves{
       }else this.onWarning('Browser storage is unavailable. Your latest progress may be lost.');
     }finally{this.busy--;}
   }
-  async release(session,complete){
+  async release(session){
     if(!this.enabled)return;
+    const complete=session.phase!=='driving'&&!session.pendingStandings;
     if(!complete)await this.save(session,true);
     this.enabled=false;
     if(complete){

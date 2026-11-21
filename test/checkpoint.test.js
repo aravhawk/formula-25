@@ -6,6 +6,8 @@ import {GrandPrix,FlyingLap,setupCircuit,STEP} from '../src/racing.js';
 import {Circuit} from '../src/circuit.js';
 import {captureGame,restoreGame,validateCheckpoint} from '../src/checkpoint.js';
 import {RaceStore,SaveConflict} from '../src/save-store.js';
+import {recordResult} from '../src/championship.js';
+import {SessionSaves,loadRace} from '../src/session-saves.js';
 
 const json=name=>JSON.parse(readFileSync(new URL('../public/season/'+name+'.json',import.meta.url)));
 const event=json('calendar')[0],track=setupCircuit(new Circuit(json('01')),event);
@@ -79,6 +81,48 @@ test('An unavailable final-copy store leaves the durable checkpoint readable',as
   await store.commit(null,{owner:'quota',sequence:1,snapshot:{lap:3}});
   store.finalCopy({owner:'quota',sequence:2,snapshot:{lap:4}});
   assert.equal((await store.load()).snapshot.lap,3);
+});
+
+test('Rejected standings writes keep the result checkpoint until a successful retry',async t=>{
+  const entries=new Map();
+  let full=true;
+  const local={
+    getItem:key=>entries.get(key),
+    setItem:(key,value)=>{
+      if(full)throw new DOMException('Storage full','QuotaExceededError');
+      entries.set(key,value);
+    },
+    removeItem:key=>entries.delete(key)
+  };
+  for(const [key,value] of Object.entries({indexedDB:new IDBFactory(),localStorage:local})){
+    const prior=Object.getOwnPropertyDescriptor(globalThis,key);
+    Object.defineProperty(globalThis,key,{configurable:true,value});
+    t.after(()=>{if(prior)Object.defineProperty(globalThis,key,prior);else delete globalThis[key];});
+  }
+  for(const sprint of [true,false]){
+    full=true;
+    const game=new GrandPrix(track,event),setup=savedGame(game).setup;
+    game.state='finished';
+    const session={game,phase:'results',before:{distance:0,offset:0,heading:0},acc:0,
+      eye:{lateral:0,longitudinal:0,lookIn:0},world:{}};
+    const history=[],result={round:1,rows:game.classification(),sprint};
+    const first=new SessionSaves(setup,()=>{});
+    await first.claim(session,null);
+    session.pendingStandings=recordResult(history,result)===null;
+    assert(session.pendingStandings);assert.deepEqual(history,[]);
+    await first.release(session);
+    const kept=await loadRace();
+    assert.equal(validateCheckpoint(kept.snapshot).cockpit.phase,'results');
+    const resumed=new SessionSaves(setup,()=>{});
+    await resumed.claim(session,kept.owner);
+    full=false;
+    const updated=recordResult(history,result);
+    assert.deepEqual(updated,[result]);
+    assert.deepEqual(recordResult(updated,result),[result]);
+    assert.deepEqual(JSON.parse(local.getItem('formula25.v1.'+(sprint?'sprintResults':'championship'))),[result]);
+    session.pendingStandings=false;
+    await resumed.release(session);assert.equal(await loadRace(),null);
+  }
 });
 
 test('An incompatible cockpit or incomplete wheel state cannot enter the race loop',()=>{

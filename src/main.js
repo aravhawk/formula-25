@@ -7,7 +7,7 @@ import {Circuit} from './circuit.js';
 import {GrandPrix,FlyingLap,qualifyingSlot,setupCircuit} from './racing.js';
 import {seasonData as json} from './assets.js';
 import {mod,colors,formatTime,read,write,DRIVER} from './data.js';
-import {championshipTable} from './championship.js';
+import {championshipTable,recordResult} from './championship.js';
 import {controlsPanel,wireControls,controlCard} from './controls.js';
 import {input,blip,moveFocus,watchGamepad,hintBar,glyph,fullscreen} from './menu.js';
 measureDisplay();
@@ -289,7 +289,7 @@ bind('continueSession',async()=>{
 async function leave(){
   if(active){
     const s=active;active=null;s.dispose();
-    try{await s.saves.release(s,s.phase!=='driving');}catch{storageWarning('Unable to update browser save.');}
+    try{await s.saves.release(s);}catch{storageWarning('Unable to update browser save.');}
   }
   if($('sheet').open)$('sheet').close();dialogClose=null;go('race');await refreshContinue();
 }
@@ -327,9 +327,18 @@ function finish(s){
     rounds=read('championship',rounds);sprintResults=read('sprintResults',sprintResults);
   }
   if(mode==='season'&&rounds.length===e.round-1){
-    if(g.event.sprint){if(!sprintResults.some(r=>r.round===e.round)){sprintResults.push({round:e.round,rows,sprint:true});write('sprintResults',sprintResults);}}
-    else{rounds.push({round:e.round,rows});write('championship',rounds);}
+    const sprint=Boolean(e.sprint);
+    const updated=recordResult(sprint?sprintResults:rounds,sprint?{round:e.round,rows,sprint:true}:{round:e.round,rows});
+    if(!updated){
+      s.pendingStandings=true;
+      const recovery=s.saves.enabled?'The race checkpoint is kept if you return to the garage.':'Autosave is unavailable for this session. Leaving will lose this result.';
+      show('Championship · '+e.city,'Standings could not be saved','<p class="sheet-text">Allow site storage or free disk space, then retry. '+recovery+'</p><div class="sheet-actions"><button class="primary" id="retryResult" data-first>Retry save</button><button class="secondary" id="leaveResult">'+(s.saves.enabled?'Return to garage':'Leave without saving')+'</button></div>',
+        s.saves.enabled?leave:()=>finish(s),'narrow');
+      bind('retryResult',()=>finish(s));bind('leaveResult',leave);return;
+    }
+    if(sprint)sprintResults=updated;else rounds=updated;
   }
+  s.pendingStandings=false;
   const winner=rows[0],table=rows.map((r,i)=>'<tr class="'+(r.id===DRIVER.id?'you':'')+'" style="--i:'+i+'"><td>'+pad(r.position)+'</td><td>'+teamCell(r)+'</td><td>'+(teams[r.team]||'')+'</td><td>'+(r.position===1?formatTime(r.time):r.laps<winner.laps?'+'+(winner.laps-r.laps)+' lap': '+'+(r.time-winner.time).toFixed(3))+(r.penalty?' (+30s)':'')+'</td><td>'+r.points+'</td></tr>').join('');
   const reset=async()=>{await leave();if(mode==='season'){select(Math.min(23,rounds.length));if(rounds.length===24)go('standings');}};
   const stat=(label,value)=>'<div><dt>'+label+'</dt><dd>'+value+'</dd></div>';

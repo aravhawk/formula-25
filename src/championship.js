@@ -1,3 +1,12 @@
+import {write} from './data.js';
+
+// Publish the new standings in memory only after the browser accepts the write.
+export function recordResult(history,result){
+  if(history.some(entry=>entry.round===result.round))return history;
+  const updated=[...history,result];
+  return write(result.sprint?'sprintResults':'championship',updated)?updated:null;
+}
+
 export function championshipTable(rounds){
   const entries=new Map();
   for(const race of rounds)for(const row of race.rows){
