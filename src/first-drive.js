@@ -11,8 +11,8 @@ export class FirstDrive{
     else if(this.stage===3&&d.boost&&d.energy<.995)this.stage++;
     return this.stage;
   }
-  prompt(device){
-    const keys=device==='pad'?['RT','left stick','LT','RT + A']:device==='touch'?['THR','‹ and ›','BRK','THR + ERS']:['W or ↑','A and D or ← and →','S or ↓','W + Shift'];
+  prompt(device,pad){
+    const keys=device==='pad'?[pad.r2,'the left stick',pad.l2,pad.r2+' + '+pad.south]:device==='touch'?['THR','‹ and ›','BRK','THR + ERS']:['W or ↑','A and D or ← and →','S or ↓','W + Shift'];
     return [
       ['Build up to 60 km/h','Apply throttle with '+keys[0]+'. The gearbox shifts automatically.'],
       ['Feel the steering','Use '+keys[1]+' to make a gentle correction in each direction.'],

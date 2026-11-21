@@ -40,7 +40,8 @@ Choose **First drive** for a guided solo run. The engineer follows your inputs t
 - B calls or cancels a pit stop. T selects the next compound. Pit entry, service and release are automatic once called.
 - Full-distance Grands Prix require two dry tyre compounds. Monaco also requires two stops. The game applies a 30-second penalty for a missed requirement.
 - Settings has traction control (Full, Medium, Off), anti-lock brakes and steering assist. With traction control off, too much throttle in a low gear spins the car. Lift and steer into the slide to catch it. With anti-lock off, a locked front axle will not turn.
-- L toggles the racing line. F toggles fullscreen. Esc pauses. Touch and standard-mapping gamepads are supported. The Controls screen lists every binding, and H shows them in the cockpit. Menus respond to arrows, Enter and Esc, or a gamepad’s D-pad, A and B.
+- L toggles the racing line. F toggles fullscreen. Esc pauses. Touch is supported. The Controls screen lists every binding, and H shows them in the cockpit. Menus respond to arrows, Enter and Esc.
+- Xbox and PlayStation controllers work over Bluetooth or USB. Pair the controller with the computer, then press any button in the game. Triggers are the pedals and the left stick steers. A (✕) deploys ERS, B (○) opens DRS, X (□) calls the pit and Y (△) picks tyres. The bumpers shift, D-pad up toggles the racing line and D-pad down selects reverse. Menu (Options) pauses and View (Create) shows the controls. The game names the buttons for the controller in use, pauses if it disconnects and shakes it over kerbs, slides and contact where the browser supports rumble. Fullscreen needs the keyboard or the Settings screen.
 
 ## Build and test the source
 

@@ -1,9 +1,12 @@
 // Console-style menu input: focus moves with arrows, D-pad or stick, and the hint bar follows the device in use.
-import {read} from './data.js';
-export const input={device:matchMedia('(pointer:coarse)').matches?'touch':'keys',changed:null};
-export function noteDevice(device){
-  if(input.device===device)return;
-  input.device=device;document.documentElement.dataset.device=device;input.changed?.(device);
+import {read,write} from './data.js';
+import {activePad,padLabels} from './gamepad.js';
+// The pad family is kept between visits so the right button names show before the first press.
+export const input={device:matchMedia('(pointer:coarse)').matches?'touch':'keys',family:read('pad','xbox'),changed:null};
+export function noteDevice(device,family=input.family){
+  if(input.device===device&&input.family===family)return;
+  if(input.family!==family)write('pad',family);
+  input.device=device;input.family=family;document.documentElement.dataset.device=device;input.changed?.(device);
 }
 document.documentElement.dataset.device=input.device;
 let sound,armed=false;
@@ -43,17 +46,15 @@ export function moveFocus(scope,dx,dy){
 }
 // Poll the gamepad every frame so a press that paused the race is not read again as a menu press.
 export function watchGamepad(inMenu,act){
-  if(!navigator.getGamepads)return;
   let last=[],repeatAt=0,heldDirection='';
   const names={0:'ok',1:'back',3:'controls',4:'tabPrev',5:'tabNext',6:'circuitPrev',7:'circuitNext',9:'start'};
   const poll=now=>{
     requestAnimationFrame(poll);
-    const pad=navigator.getGamepads()[0];if(!pad)return;
-    const pressed=pad.buttons.map(b=>b.pressed||b.value>.5),menu=inMenu();
-    const x=pad.axes[0]||0,y=pad.axes[1]||0;
+    const pad=activePad();if(!pad)return;
+    const pressed=pad.buttons.map(v=>v>.5),menu=inMenu(),{x,y}=pad;
     const direction=pressed[12]||y<-.6?'up':pressed[13]||y>.6?'down':pressed[14]||x<-.6?'left':pressed[15]||x>.6?'right':'';
     if(menu){
-      if(direction||pressed.some(Boolean))noteDevice('pad');
+      if(pad.busy)noteDevice('pad',pad.family);
       if(direction&&(direction!==heldDirection||now>=repeatAt)){repeatAt=now+(direction!==heldDirection?380:130);act(direction);}
       for(const [index,name] of Object.entries(names))if(pressed[index]&&!last[index])act(name);
     }
@@ -61,14 +62,16 @@ export function watchGamepad(inMenu,act){
   };
   requestAnimationFrame(poll);
 }
-const glyphs={
-  keys:{nav:['↑','↓','←','→'],ok:['Enter'],back:['Esc'],tabs:['Q','E'],tabPrev:['Q'],tabNext:['E'],circuit:[',','.'],controls:['C']},
-  pad:{nav:['D-pad'],ok:['A'],back:['B'],tabs:['LB','RB'],tabPrev:['LB'],tabNext:['RB'],circuit:['LT','RT'],controls:['Y']}
-};
+const keyGlyphs={nav:['↑','↓','←','→'],ok:['Enter'],back:['Esc'],tabs:['Q','E'],tabPrev:['Q'],tabNext:['E'],circuit:[',','.'],controls:['C']};
+function glyphs(){
+  if(input.device!=='pad')return keyGlyphs;
+  const p=padLabels(input.family);
+  return {nav:[p.dpad],ok:[p.south],back:[p.east],tabs:[p.l1,p.r1],tabPrev:[p.l1],tabNext:[p.r1],circuit:[p.l2,p.r2],controls:[p.north]};
+}
 // Fullscreen also takes Esc for the game, so it pauses instead of leaving fullscreen. Hold Esc to leave.
 export function fullscreen(){
   if(document.fullscreenElement)return document.exitFullscreen();
   document.documentElement.requestFullscreen?.().then(()=>navigator.keyboard?.lock?.(['Escape'])).catch(()=>{});
 }
-export const glyph=name=>(glyphs[input.device]||glyphs.keys)[name].map(cap=>'<kbd>'+cap+'</kbd>').join('');
+export const glyph=name=>glyphs()[name].map(cap=>'<kbd>'+cap+'</kbd>').join('');
 export const hintBar=items=>input.device==='touch'?'':items.map(([name,label])=>'<span>'+glyph(name)+label+'</span>').join('');
