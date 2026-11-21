@@ -1,0 +1,28 @@
+{
+  "name": "formula-25",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "start": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.4",
+    "vite": "7.3.8"
+  },
+  "description": "Cockpit racing simulator for the 2025 Formula 1 season",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aravhawk/formula-25.git"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

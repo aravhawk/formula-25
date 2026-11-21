@@ -1,0 +1,49 @@
+Formula 25 geographic data and artwork
+
+Roads are aligned to the F1 circuits geographic database, © 2019–2025 Tomislav Bacinger, MIT. See bacinger-MIT.txt.
+https://github.com/bacinger/f1-circuits
+GPS, speed, shift ratios and lap timing are derived from OpenF1. Calendar and grids are from Jolpica.
+
+Building databases (public/season/buildings-*.json) © OpenStreetMap contributors. Distributed under the Open Data Commons Open Database License 1.0. Derived via OpenMapTiles and OpenFreeMap. scripts/landscape.py rebuilds the derived data.
+https://www.openstreetmap.org/copyright
+https://opendatacommons.org/licenses/odbl/1-0/
+https://openfreemap.org
+https://openmaptiles.org
+
+Terrain grid derived from Mapzen / AWS Terrain Tiles (Terrarium). Source attribution varies by location.
+https://registry.opendata.aws/terrain-tiles/
+https://github.com/tilezen/joerd/blob/master/docs/attribution.md
+
+Contains modified Copernicus Sentinel data (2025). Sentinel-2 L2A true-colour images via Element 84 Earth Search and the AWS Registry of Open Data. Resampled for each circuit.
+https://dataspace.copernicus.eu/terms-and-conditions
+https://registry.opendata.aws/sentinel-2-l2a-cogs/
+
+Round 01   S2C_55HCU_20250519_0_L2A
+Round 02   S2A_51RUQ_20250916_1_L2A
+Round 03   S2C_53SPU_20250618_0_L2A
+Round 04   S2A_39RVJ_20250118_0_L2A
+Round 05   S2B_37QED_20250316_0_L2A
+Round 06   S2A_17RNJ_20250104_0_L2A
+Round 07   S2C_32TQQ_20250502_0_L2A
+Round 08   S2B_32TLP_20250907_0_L2A
+Round 09   S2A_31TDG_20250811_1_L2A
+Round 10   S2B_18TXR_20250916_0_L2A
+Round 11   S2C_33TVN_20250320_0_L2A
+Round 12   S2C_30UXC_20250712_0_L2A
+Round 13   S2A_31UGR_20250811_1_L2A
+Round 14   S2A_34TCT_20250813_0_L2A
+Round 15   S2B_31UEU_20250519_0_L2A
+Round 16   S2C_32TNR_20250306_0_L2A
+Round 17   S2C_39TUE_20250713_0_L2A
+Round 18   S2C_48NUG_20250906_0_L2A
+Round 19   S2B_14RPU_20250910_0_L2A
+Round 20   S2C_14QMG_20250316_0_L2A
+Round 21   S2B_23KLP_20250813_0_L2A
+Round 22   S2C_11SPA_20250320_0_L2A
+Round 23   S2C_39RWJ_20250319_0_L2A
+Round 24   S2B_40RBN_20250927_0_L2A
+
+Asphalt 04, Aerial Grass Rock, Spruit Sunrise and Kloofendal 48d Partly Cloudy (Pure Sky), Poly Haven, CC0.
+https://polyhaven.com/license
+
+Original generated cockpit, wheel, gloves, driver fabric, foliage, garage artwork, grandstand crowd, pit garages and facade textures.
