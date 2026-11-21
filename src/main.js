@@ -39,7 +39,13 @@ function hints(){
   for(const el of document.querySelectorAll('[data-glyph]'))el.innerHTML=input.device==='touch'?'':glyph(el.dataset.glyph);
   for(const el of document.querySelectorAll('kbd[data-pad]'))el.textContent=padLabels(input.family)[el.dataset.pad];
   const panel=$('controlsBody').firstChild;
-  if(!open&&view==='controls'&&(panel?.dataset.show!==input.device||panel.dataset.pad!==input.family))controlsView();
+  if(!open&&view==='controls'&&panel?.dataset.show!==input.device)controlsView();
+  // An open reference, in the pause menu too, takes the labels of the pad now in use and keeps its tab.
+  for(const stale of document.querySelectorAll('.controls:not([data-pad="'+input.family+'"])')){
+    const root=stale.parentNode,tab=stale.contains(document.activeElement)&&document.activeElement.dataset.device;
+    stale.outerHTML=controlsPanel(stale.dataset.show);wireControls(root);
+    if(tab)root.querySelector('[data-device="'+tab+'"]').focus();
+  }
 }
 const cards=()=>{$('keys').innerHTML=$('loadKeys').innerHTML=controlCard();};
 input.changed=()=>{cards();hints();};
