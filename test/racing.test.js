@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Circuit} from '../src/circuit.js';
-import {GrandPrix,STEP,setupCircuit} from '../src/racing.js';
+import {GrandPrix,STEP,qualifyingSlot,setupCircuit} from '../src/racing.js';
 import {control} from './driver.js';
 const json=name=>JSON.parse(readFileSync(new URL('../public/season/'+name+'.json',import.meta.url)));
 const events=json('calendar');
@@ -43,6 +43,15 @@ test('Full-distance Monaco classification counts two pit stops and laps down',()
  assert.equal(g.state,'finished');g.settle();assert(g.players.every(c=>c.finishTime!==null));
  assert.equal(g.player.stops,2);assert.equal(Math.max(...g.players.map(c=>c.completed)),78);
  assert(g.classification().every(c=>c.penalty===0));
+});
+test('Every venue ranks a qualifying lap against timed rivals, including Miami',()=>{
+ const times=json('qualifying');
+ for(const e of events)assert(qualifyingSlot(e.grid,times[e.round-1],200)>0,e.name);
+ const grid=events[5].grid,miami=times[5];
+ assert.equal(qualifyingSlot(grid,miami,86.204),0);
+ assert.equal(qualifyingSlot(grid,miami,86.270),2);
+ assert.equal(qualifyingSlot(grid,miami,90),19);
+ assert.equal(qualifyingSlot(grid,{VER:86.204},90),null);
 });
 test('A solo flying lap produces one valid qualifying time',async()=>{
  const {FlyingLap}=await import('../src/racing.js');const prep=create(events[11]);const g=new FlyingLap(prep.track,prep.event);

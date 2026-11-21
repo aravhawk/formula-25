@@ -297,6 +297,13 @@ export class GrandPrix{
   }
 }
 
+export function qualifyingSlot(grid,times,lap){
+  const rivals=grid.filter(driver=>driver.id!==DRIVER.code)
+    .map(driver=>times?.[driver.id]).filter(Number.isFinite);
+  if(!rivals.length||!Number.isFinite(lap))return null;
+  return rivals.filter(time=>time<lap).length;
+}
+
 export class FlyingLap extends GrandPrix{
   constructor(track,event){
     super(track,event,1);

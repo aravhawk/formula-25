@@ -57,7 +57,7 @@ The production preview listens on port 4173. The build in `dist` can also be ser
 
 ### Circuits and opponents
 
-The racing line, elevation, sector splits and observed DRS usage follow 2025 OpenF1 sessions. Baku and Las Vegas use practice data. The recorded lines are aligned to geographic circuit maps, with the driven path taking precedence where the layout diverges. AI pace follows the recorded speed trace. Calendar, grid and qualifying data come from Jolpica. [OpenF1](https://openf1.org/) · [Jolpica](https://api.jolpi.ca/ergast/f1/2025.json)
+The racing line, elevation, sector splits and observed DRS usage follow 2025 OpenF1 sessions. Baku and Las Vegas use practice data. The recorded lines are aligned to geographic circuit maps, with the driven path taking precedence where the layout diverges. AI pace follows the recorded speed trace. Calendar, grid and qualifying data come from Jolpica. Miami’s qualifying times use OpenF1’s Q1–Q3 session results because Jolpica omits those times. [OpenF1](https://openf1.org/) · [Jolpica](https://api.jolpi.ca/ergast/f1/2025.json)
 
 Each venue has a terrain grid, a georeferenced 2025 Sentinel-2 mosaic and nearby OpenStreetMap building footprints. Building heights depend on map coverage. Road widths, roofs, facades, grandstands and kerbs are reconstructed. [Geographic data and imagery credits](public/licenses/landscape.txt)
 

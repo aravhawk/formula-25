@@ -4,7 +4,7 @@ import {SessionSaves,loadRace,removeRace} from './session-saves.js';
 import {SaveConflict} from './save-store.js';
 import {measureDisplay} from './frame-pacer.js';
 import {Circuit} from './circuit.js';
-import {GrandPrix,FlyingLap,setupCircuit} from './racing.js';
+import {GrandPrix,FlyingLap,qualifyingSlot,setupCircuit} from './racing.js';
 import {seasonData as json} from './assets.js';
 import {mod,colors,formatTime,read,write,DRIVER} from './data.js';
 import {championshipTable} from './championship.js';
@@ -315,10 +315,11 @@ function paused(s){
 function finish(s){
   const g=s.game,e=g.event,last=g.player.lapTimes.at(-1);
   if(g.qualifying){
-    const refs=references[e.round-1]||{},rivals=e.grid.filter(r=>r.id!==DRIVER.code);
-    gridSlot=rivals.filter(r=>Number.isFinite(refs[r.id])&&refs[r.id]<last).length;
-    qualResult=last;gridLabel();$('grid').value='race';setStartLabel();
-    show('Qualifying · '+e.city,'P'+(gridSlot+1)+' on the grid','<p class="sheet-text">Flying lap <b>'+formatTime(last)+'</b>. Your grid position compares it with each rival’s best recorded 2025 qualifying lap at this venue.</p><div class="sheet-actions"><button class="primary" id="toRace" data-first>Start Grand Prix'+arrow+'</button></div>',leave,'narrow');
+    const slot=qualifyingSlot(e.grid,references[e.round-1],last);
+    gridSlot=slot??Math.max(0,e.grid.findIndex(driver=>driver.id===DRIVER.code));
+    qualResult=slot===null?null:last;gridLabel();$('grid').value='race';setStartLabel();
+    const comparison=slot===null?'Qualifying times are unavailable. Your start uses Verstappen’s recorded grid slot.':'Your grid position compares this lap with each rival’s best recorded qualifying time.';
+    show('Qualifying · '+e.city,'P'+(gridSlot+1)+' on the grid','<p class="sheet-text">Flying lap <b>'+formatTime(last)+'</b>. '+comparison+'</p><div class="sheet-actions"><button class="primary" id="toRace" data-first>Start Grand Prix'+arrow+'</button></div>',leave,'narrow');
     bind('toRace',async()=>{await leave();launch();});return;
   }
   const rows=g.classification(),you=rows.find(r=>r.id===DRIVER.id);
