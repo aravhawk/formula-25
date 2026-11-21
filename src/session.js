@@ -7,7 +7,8 @@ import {graphicsPrefs} from './graphics.js';
 import {World} from './world.js';
 import {STEP,tyreColor} from './racing.js';
 import {clamp,formatTime,read} from './data.js';
-import {noteDevice,fullscreen} from './menu.js';
+import {input,noteDevice,fullscreen} from './menu.js';
+import {activePad,padLabels,rumble,stick} from './gamepad.js';
 import {wrap} from './physics.js';
 export const audio=new MotorAudio();
 const $=id=>document.getElementById(id);
@@ -25,8 +26,8 @@ export class Session{
     this.game=game;this.hooks=hooks;this.world=world;this.cockpit=cockpit;this.eye=new DriverView(!matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.pose=Object.create(game.player);
     this.before={distance:game.player.distance,heading:game.player.heading,offset:game.player.offset};
-    this.line=true;this.keys=new Set();this.touches=new Map();this.lastButtons=[];this.abort=new AbortController();
-    this.phase='driving';this.nextSave=0;this.paused=true;this.active=true;this.previous=0;this.acc=0;this.hudAfter=0;this.held=0;shown.clear();this.readout=read('readout','on')==='on';
+    this.line=true;this.keys=new Set();this.touches=new Map();this.lastButtons=null;this.vibrate=read('vibration','on')==='on';this.abort=new AbortController();
+    this.phase='driving';this.nextSave=0;this.paused=true;this.active=true;this.previous=0;this.acc=0;this.hudAfter=0;this.shakeAfter=0;this.held=0;shown.clear();this.readout=read('readout','on')==='on';
     const on=(target,type,callback)=>target.addEventListener(type,callback,{signal:this.abort.signal});
     on(window,'resize',()=>this.resize());on(window,'blur',()=>this.pause());
     on(document,'visibilitychange',()=>{if(document.hidden){if(this.paused)this.hooks.save(this,true);else this.pause();}});
@@ -46,6 +47,8 @@ export class Session{
       if(key==='KeyF')fullscreen();
     });
     on(window,'keyup',event=>this.keys.delete(event.code));
+    // A pad that drops its Bluetooth link mid-corner stops the race instead of the car coasting on.
+    on(window,'gamepaddisconnected',event=>{if(input.device==='pad'&&event.gamepad.index===this.pad?.index){this.padLost=true;this.pause();}});
     for(const b of document.querySelectorAll('[data-drive]')){
       on(b,'pointerdown',e=>{b.setPointerCapture(e.pointerId);this.touches.set(e.pointerId,b.dataset.drive);});
       on(b,'lostpointercapture',e=>this.touches.delete(e.pointerId));
@@ -64,7 +67,7 @@ export class Session{
   // The control card shows itself on the grid and for the opening seconds. H pins or hides it.
   toggleHelp(){this.help=!$('keys').classList.contains('show');$('keys').classList.toggle('show',this.help);}
   endPractice(){
-    cancelAnimationFrame(this.frameId);audio.silence();this.paused=true;
+    cancelAnimationFrame(this.frameId);audio.silence();rumble(this.pad);this.paused=true;
     this.phase='briefing';this.keys.clear();this.touches.clear();this.hooks.save(this,true);this.hooks.briefing(this);
   }
   resize(){
@@ -73,21 +76,31 @@ export class Session{
   }
   inputs(){
     const held=new Set([...this.keys].map(k=>keyFor[k]).concat([...this.touches.values()]));
-    const pad=navigator.getGamepads?.()[0],v=i=>pad?.buttons[i]?.value||0;
-    if(pad){const pressed=pad.buttons.map(b=>b.pressed);
-      const hit=i=>pressed[i]&&!this.lastButtons[i];
+    const pad=activePad(),v=i=>pad?.buttons[i]||0,pedal=i=>v(i)<.04?0:v(i);
+    this.pad=pad?.pad;
+    if(pad){const pressed=pad.buttons.map(value=>value>.5);
+      // Buttons still held from the pause menu are not new presses.
+      const hit=i=>pressed[i]&&this.lastButtons&&!this.lastButtons[i];
       if(hit(4))this.game.player.shift(-1);if(hit(5))this.game.player.shift(1);
       if(hit(2))this.game.requestPit();if(hit(3))this.game.pickTyre();if(hit(8))this.toggleHelp();if(hit(9))this.pause();
-      if(pressed.some(Boolean)||Math.abs(pad.axes[0]||0)>.4)noteDevice('pad');
+      if(hit(12))this.line=!this.line;if(hit(13))this.game.player.toggleReverse();
+      // Light steering or a feathered pedal drives the car, so it counts as using the pad.
+      if(pad.busy||stick(pad.x)||pedal(6)||pedal(7))noteDevice('pad',pad.family);
       this.lastButtons=pressed;}
-    const axis=pad?.axes[0]||0;
-    const steer=Number(held.has('right'))-Number(held.has('left'))+(Math.abs(axis)>.065?axis:0);
-    return {steer:clamp(steer,-1,1),throttle:Math.max(+held.has('throttle'),v(7)),brake:Math.max(+held.has('brake'),v(6)),
+    const steer=Number(held.has('right'))-Number(held.has('left'))+stick(pad?.x||0);
+    return {steer:clamp(steer,-1,1),throttle:Math.max(+held.has('throttle'),pedal(7)),brake:Math.max(+held.has('brake'),pedal(6)),
       boost:held.has('boost')||v(0)>.5,drs:held.has('drs')||v(1)>.5};
   }
+  // Kerbs and slides reach the hands through the light motor, contact through the heavy one.
+  shake(d){
+    if(!this.vibrate||input.device!=='pad')return;
+    const roughness=Math.max(...Array.from(d.suspension.contacts,Math.abs));
+    rumble(this.pad,Math.min(.8,Math.max(0,roughness-.006)*Math.min(1,d.speed/18)*22+d.slip*.45),
+      Math.max(d.hit||0,d.wallSide?Math.min(.7,d.speed*.016):0));
+  }
   pause(){if(this.paused||!this.active||this.game.state==='finished')return;
-    this.paused=true;cancelAnimationFrame(this.frameId);this.keys.clear();this.touches.clear();audio.silence();this.hooks.pause(this);}
-  resume(){if(!this.paused||!this.active)return;this.paused=false;this.previous=0;this.frameId=requestAnimationFrame(this.frame);}
+    this.paused=true;cancelAnimationFrame(this.frameId);this.keys.clear();this.touches.clear();audio.silence();rumble(this.pad);this.hooks.pause(this);}
+  resume(){if(!this.paused||!this.active)return;this.paused=false;this.padLost=false;this.lastButtons=null;this.previous=0;this.frameId=requestAnimationFrame(this.frame);}
   async restoreGraphics(){
     if(this.recovering)return;
     this.recovering=true;audio.silence();this.keys.clear();this.touches.clear();
@@ -126,12 +139,12 @@ export class Session{
     // Hold an even half rate when the display refreshes faster than the scene can be drawn.
     if(this.world.cadence>1&&(this.held=(this.held+1)%this.world.cadence)){this.frameId=requestAnimationFrame(this.frame);return;}
     const dt=this.previous?(now-this.previous)/1000:0;this.previous=now;
-    const input=this.inputs();if(this.paused)return;
+    const drive=this.inputs();if(this.paused)return;
     this.acc+=Math.min(dt,.19);
     const live=this.game.player;
     while(this.acc>=STEP&&this.game.state!=='finished'){
       this.before.distance=live.distance;this.before.heading=live.heading+live.bodyYaw;this.before.offset=live.offset;
-      this.game.tick(STEP,input);this.acc-=STEP;
+      this.game.tick(STEP,drive);this.acc-=STEP;
     }
     const d=this.pose,alpha=Math.min(1,this.acc/STEP);
     d.distance=this.before.distance+(live.distance-this.before.distance)*alpha;d.offset=this.before.offset+(live.offset-this.before.offset)*alpha;
@@ -141,13 +154,13 @@ export class Session{
       c.renderOffset=c.oldOffset===undefined?c.offset:c.oldOffset+(c.offset-c.oldOffset)*alpha;
     }
     if(this.training){
-      const stage=this.training.update(live,input);
+      const stage=this.training.update(live,drive);
       if(stage===4||this.game.state==='finished'){this.endPractice();return;}
-      const device=navigator.getGamepads?.()[0]?'pad':this.touches.size||matchMedia('(pointer:coarse)').matches?'touch':'keys';
-      if(stage!==this.shownStage||device!==this.shownDevice){
-        this.shownStage=stage;this.shownDevice=device;
+      const device=input.device,shown=device+input.family;
+      if(stage!==this.shownStage||shown!==this.shownDevice){
+        this.shownStage=stage;this.shownDevice=shown;
         $('coachStep').textContent='FIRST DRIVE   '+(stage+1)+' / 4';
-        [$('coachTitle').textContent,$('coachHint').textContent]=this.training.prompt(device);
+        [$('coachTitle').textContent,$('coachHint').textContent]=this.training.prompt(device,padLabels(input.family));
       }
     }
     this.eye.update(d,Math.min(.1,dt));
@@ -158,11 +171,12 @@ export class Session{
       console.warn(this.world.backend+' frame failed',error.message);void this.restoreGraphics();return;
     }
     this.cockpit.draw(d,this.eye,light);audio.update(d);
+    if(now>=this.shakeAfter){this.shake(d);this.shakeAfter=now+90;}
     if(now>=this.hudAfter){this.hud();if(!this.world.mirrors)updateMirrors(this.game);this.hudAfter=now+80;}
-    if(this.game.state==='finished'){audio.silence();this.game.settle();this.phase='results';this.paused=true;
+    if(this.game.state==='finished'){audio.silence();rumble(this.pad);this.game.settle();this.phase='results';this.paused=true;
       this.hooks.save(this,true).then(()=>{if(this.active)this.hooks.finish(this);});return;}
     if(now>=this.nextSave){this.hooks.save(this,false);this.nextSave=now+500;}
     this.frameId=requestAnimationFrame(this.frame);
   }
-  dispose(){this.active=false;cancelAnimationFrame(this.frameId);audio.silence();this.abort.abort();this.world.dispose();$('coach').hidden=true;$('radio').hidden=false;$('race').hidden=true;$('garage').hidden=false;}
+  dispose(){this.active=false;cancelAnimationFrame(this.frameId);audio.silence();rumble(this.pad);this.abort.abort();this.world.dispose();$('coach').hidden=true;$('radio').hidden=false;$('race').hidden=true;$('garage').hidden=false;}
 }

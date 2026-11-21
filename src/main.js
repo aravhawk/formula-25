@@ -10,6 +10,7 @@ import {mod,colors,formatTime,read,write,DRIVER} from './data.js';
 import {championshipTable,recordResult} from './championship.js';
 import {controlsPanel,wireControls,controlCard} from './controls.js';
 import {input,blip,moveFocus,watchGamepad,hintBar,glyph,fullscreen} from './menu.js';
+import {padLabels} from './gamepad.js';
 measureDisplay();
 const $=id=>document.getElementById(id),pad=i=>String(i).padStart(2,'0'),safe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cache=new Map();
@@ -36,9 +37,18 @@ function hints(){
   $('hints').innerHTML=hintBar([['nav','Navigate'],['ok','Select'],['tabs','Switch screen'],...(view==='race'&&mode==='gp'?[['circuit','Change circuit']]:[]),view==='race'?['controls','Controls']:['back','Back']])+
     '<span class="legal">Unofficial fan game</span>';
   for(const el of document.querySelectorAll('[data-glyph]'))el.innerHTML=input.device==='touch'?'':glyph(el.dataset.glyph);
-  if(!open&&view==='controls'&&$('controlsBody').firstChild?.dataset.show!==input.device)controlsView();
+  for(const el of document.querySelectorAll('kbd[data-pad]'))el.textContent=padLabels(input.family)[el.dataset.pad];
+  const panel=$('controlsBody').firstChild;
+  if(!open&&view==='controls'&&panel?.dataset.show!==input.device)controlsView();
+  // An open reference, in the pause menu too, takes the labels of the pad now in use and keeps its tab.
+  for(const stale of document.querySelectorAll('.controls:not([data-pad="'+input.family+'"])')){
+    const root=stale.parentNode,tab=stale.contains(document.activeElement)&&document.activeElement.dataset.device;
+    stale.outerHTML=controlsPanel(stale.dataset.show);wireControls(root);
+    if(tab)root.querySelector('[data-device="'+tab+'"]').focus();
+  }
 }
-input.changed=hints;
+const cards=()=>{$('keys').innerHTML=$('loadKeys').innerHTML=controlCard();};
+input.changed=()=>{cards();hints();};
 function show(tag,title,content,after,kind=''){
   const keep=$('sheet').open&&document.activeElement?.id;
   $('dialogTag').textContent=tag;$('dialogTitle').textContent=title;$('sheetBody').innerHTML=content;$('sheet').className=kind;
@@ -179,7 +189,8 @@ const prefs=[
     ['steering','Steering assist',[['on','On'],['off','Off']],'on','On follows part of each corner for you and catches a slide, which suits a keyboard. Off steers the front wheels directly.'],
     ['gearbox','Gearbox',[['auto','Automatic'],['manual','Manual']],'auto','Automatic shifts for you. A paddle press takes manual control at any time.'],
     ['line','Racing line',[['on','On'],['off','Off']],'on','Draws the recorded 2025 line on the road.'],
-    ['sound','Sound',[['on','On'],['off','Off']],'on','Engine, tyre and menu sound.']]]
+    ['sound','Sound',[['on','On'],['off','Off']],'on','Engine, tyre and menu sound.'],
+    ['vibration','Controller vibration',[['on','On'],['off','Off']],'on','Kerbs and slides shake the controller lightly and contact shakes it hard, where the controller and browser support rumble.']]]
 ];
 function settingsView(){
   $('settingsBody').innerHTML='<div class="prefs"><div>'+prefs.map(([title,rows])=>'<h3>'+title+'</h3>'+rows.map(([id,label,options,,note])=>
@@ -212,8 +223,9 @@ function firstDrive(){
 bind('school',()=>{if(track)firstDrive();});
 function debrief(s){
   const complete=s.training.stage===4;
+  const p=padLabels(input.family);
   show('First drive',complete?'Ready for the grid':'Race briefing',
-    '<ul class="lesson-list"><li><strong>Gearbox</strong><span>Automatic by default. Q / E or the gamepad bumpers take manual control.</span></li><li><strong>Rear wing</strong><span>Hold Space, gamepad B or DRS inside an eligible zone. In a race, follow within one second from lap two. Brake to close it.</span></li><li><strong>Pit strategy</strong><span>T cycles compounds and B calls the crew. On gamepad use Y then X. Both are also in the pause menu. Soft tyres wear fastest. Hard tyres last longest.</span></li></ul><div class="sheet-actions"><button class="primary" id="fromSchool" data-first>Enter race weekend'+arrow+'</button><button class="secondary" id="returnSchool">Back to garage</button></div>',leave,'narrow');
+    '<ul class="lesson-list"><li><strong>Gearbox</strong><span>Automatic by default. Q / E or '+p.l1+' / '+p.r1+' on a gamepad take manual control.</span></li><li><strong>Rear wing</strong><span>Hold Space, gamepad '+p.east+' or DRS inside an eligible zone. In a race, follow within one second from lap two. Brake to close it.</span></li><li><strong>Pit strategy</strong><span>T cycles compounds and B calls the crew. On gamepad use '+p.north+' then '+p.west+'. Both are also in the pause menu. Soft tyres wear fastest. Hard tyres last longest.</span></li></ul><div class="sheet-actions"><button class="primary" id="fromSchool" data-first>Enter race weekend'+arrow+'</button><button class="secondary" id="returnSchool">Back to garage</button></div>',leave,'narrow');
   if(complete)write('briefed',true);
   bind('fromSchool',async()=>{write('briefed',true);await leave();return launch();});
   bind('returnSchool',leave);
@@ -303,7 +315,7 @@ function paused(s){
     item('pausedgearbox','Gearbox',d.manual?'Manual':'Automatic')+item('pausedline','Racing line',s.line?'On':'Off')+item('pausedsound','Sound',s.audio.muted?'Off':'On')+
     (d.speed<=.65&&!d.pit?item('reverse',d.reverse?'Select first gear':'Select reverse'):'')+item('exit',s.saves.enabled?'Save and return to garage':'Return to garage')+'</div>'+
     '<dl class="stats">'+stat('Renderer',s.world.backend)+stat('Quality',s.world.ultra?'Ultra':s.world.software?'Performance':s.world.backend==='Canvas'?'Lightweight':'Adaptive')+(s.world.status?stat('Resolution · rate',s.world.status):'')+'</dl></div>'+
-    '<div>'+($('saveWarning').hidden?'':'<p>'+safe($('saveWarning').textContent)+'</p>')+controlsPanel(input.device)+'</div></div>',()=>s.resume(),'wide');
+    '<div>'+(s.padLost?'<p class="sheet-text" role="alert">Controller disconnected. Reconnect it and press a button, or carry on with the keyboard.</p>':'')+($('saveWarning').hidden?'':'<p>'+safe($('saveWarning').textContent)+'</p>')+controlsPanel(input.device)+'</div></div>',()=>s.resume(),'wide');
   wireControls($('sheetBody'));
   if($('reverse'))bind('reverse',()=>{d.toggleReverse();close();});
   bind('resume',close);bind('exit',()=>{leave();});
@@ -424,8 +436,7 @@ if(matchMedia('(pointer:fine)').matches&&!matchMedia('(prefers-reduced-motion: r
   const art=document.querySelector('.backdrop i');
   $('garage').addEventListener('pointermove',event=>{art.style.setProperty('--px',(event.clientX/innerWidth-.5).toFixed(3));art.style.setProperty('--py',(event.clientY/innerHeight-.5).toFixed(3));});
 }
-$('keys').innerHTML=$('loadKeys').innerHTML=controlCard();
-hints();
+cards();hints();
 Promise.all([json('calendar'),json('qualifying'),json('sprints'),json('outlines')]).then(async([list,q,sp,lines])=>{
   events=list;references=q;sprints=sp;outlines=lines;await refreshContinue();const setup=read('weekend',null);
   if(setup&&Number.isInteger(setup.round)&&setup.round>=1&&setup.round<=24)await applyWeekend(setup);else await select(0);go('race');

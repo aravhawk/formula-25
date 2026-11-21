@@ -30,7 +30,7 @@
   </section>
   <section class="view" id="view-calendar" aria-label="Calendar" hidden><div class="view-head"><h2>2025 calendar</h2><p id="calendarNote"></p></div><div class="cal"><div class="cal-list" id="calList"></div><aside class="cal-detail" id="calDetail" aria-live="polite"></aside></div></section>
   <section class="view" id="view-standings" aria-label="Standings" hidden><div class="view-head"><div><h2>Driver standings</h2><p id="standingsTag"></p></div><div id="standingsActions"></div></div><div id="standingsBody"></div></section>
-  <section class="view" id="view-controls" aria-label="Controls" hidden><div class="view-head"><h2>Controls</h2><p class="for-keys">Press <kbd>H</kbd> in the cockpit to show these while driving.</p><p class="for-pad">Press <kbd>View</kbd> in the cockpit to show these while driving.</p></div><div id="controlsBody"></div></section>
+  <section class="view" id="view-controls" aria-label="Controls" hidden><div class="view-head"><h2>Controls</h2><p class="for-keys">Press <kbd>H</kbd> in the cockpit to show these while driving.</p><p class="for-pad">Press <kbd data-pad="select"></kbd> in the cockpit to show these while driving.</p></div><div id="controlsBody"></div></section>
   <section class="view" id="view-settings" aria-label="Settings" hidden><div class="view-head"><h2>Settings</h2></div><div id="settingsBody"></div></section>
  </div>
  <footer class="hintbar" id="hints"></footer>
@@ -39,7 +39,7 @@
  <div class="hud pos"><span class="who"><b>1</b>VER<i id="hudVenue"></i></span><div class="bigtime"><b id="position">P10</b><small> / 20</small></div><div class="rowtag" id="interval">STARTING GRID</div></div>
  <div class="hud lap"><span class="kicker" id="lapNum">LAP 1 / 3</span><div id="lapTime">0:00.000</div><div class="rowtag" id="sector">SECTOR 1</div></div>
  <button id="pause" aria-label="Pause race" class="pause"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pause"/></svg></button><div id="perf" class="perf"></div><div id="saveWarning" role="status" hidden></div>
- <div id="keys" class="keys" aria-label="Controls"></div><div class="keyhint"><span class="for-keys"><kbd>H</kbd> Controls <kbd>Esc</kbd> Pause</span><span class="for-pad"><kbd>View</kbd> Controls <kbd>Start</kbd> Pause</span></div>
+ <div id="keys" class="keys" aria-label="Controls"></div><div class="keyhint"><span class="for-keys"><kbd>H</kbd> Controls <kbd>Esc</kbd> Pause</span><span class="for-pad"><kbd data-pad="select"></kbd> Controls <kbd data-pad="start"></kbd> Pause</span></div>
  <div class="hud telemetry"><canvas id="raceMap" width="220" height="142"></canvas><div class="status" id="tyres"></div><div class="status" id="condition"></div><div class="status" id="deploy"></div></div>
  <aside id="coach" hidden aria-live="polite"><span class="kicker" id="coachStep"></span><strong id="coachTitle"></strong><span id="coachHint"></span><button id="endPractice">End practice</button></aside>
  <div id="startLights" aria-label="Race start lights"></div><div id="radio"></div>
