@@ -138,12 +138,12 @@ export class Session{
     // Hold an even half rate when the display refreshes faster than the scene can be drawn.
     if(this.world.cadence>1&&(this.held=(this.held+1)%this.world.cadence)){this.frameId=requestAnimationFrame(this.frame);return;}
     const dt=this.previous?(now-this.previous)/1000:0;this.previous=now;
-    const input=this.inputs();if(this.paused)return;
+    const drive=this.inputs();if(this.paused)return;
     this.acc+=Math.min(dt,.19);
     const live=this.game.player;
     while(this.acc>=STEP&&this.game.state!=='finished'){
       this.before.distance=live.distance;this.before.heading=live.heading+live.bodyYaw;this.before.offset=live.offset;
-      this.game.tick(STEP,input);this.acc-=STEP;
+      this.game.tick(STEP,drive);this.acc-=STEP;
     }
     const d=this.pose,alpha=Math.min(1,this.acc/STEP);
     d.distance=this.before.distance+(live.distance-this.before.distance)*alpha;d.offset=this.before.offset+(live.offset-this.before.offset)*alpha;
@@ -153,7 +153,7 @@ export class Session{
       c.renderOffset=c.oldOffset===undefined?c.offset:c.oldOffset+(c.offset-c.oldOffset)*alpha;
     }
     if(this.training){
-      const stage=this.training.update(live,input);
+      const stage=this.training.update(live,drive);
       if(stage===4||this.game.state==='finished'){this.endPractice();return;}
       const device=input.device,shown=device+input.family;
       if(stage!==this.shownStage||shown!==this.shownDevice){
