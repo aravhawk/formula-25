@@ -19,7 +19,7 @@ Open the local URL printed by Vite. Choose **First drive** to learn the controls
 
 ## Deploy to Vercel
 
-Import the GitHub repository as a new Vercel project. Use the repository root, the **Vite** preset and Node.js **24.x**. The included configuration runs `npm ci`, builds with `npm run build` and serves `dist`. The app needs no API keys, server database or environment variables. Use the same production domain across releases so players keep access to their browser saves.
+Import the GitHub repository as a new Vercel project. Use the repository root, the **Vite** preset and Node.js **24.x**. The included configuration runs `npm ci`, builds with `npm run build` and serves `dist`. The app needs no API keys, server database or environment variables. Use the same production domain across releases so players keep access to their browser saves. The canonical link and the Open Graph and Twitter card tags in `index.html` name `https://formula.aravhawk.com`. If you deploy under another domain, replace it there and in the tests. The 1200 by 630 share image is `public/og-image.jpg`, and its source is `scripts/og-image.html`.
 
 ## Autosave and recovery
 
