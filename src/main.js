@@ -190,7 +190,7 @@ const prefs=[
     ['gearbox','Gearbox',[['auto','Automatic'],['manual','Manual']],'auto','Automatic shifts for you. A paddle press takes manual control at any time.'],
     ['line','Racing line',[['on','On'],['off','Off']],'on','Draws the recorded 2025 line on the road.'],
     ['sound','Sound',[['on','On'],['off','Off']],'on','Engine, tyre and menu sound.'],
-    ['vibration','Controller vibration',[['strong','Strong'],['on','Standard'],['light','Light'],['off','Off']],'on','Engine, gear shifts, braking, cornering load, slides, kerbs, surfaces and contact all reach the controller. Xbox controllers in Chrome and Edge on Windows also rumble in the triggers.']]]
+    ['vibration','Controller vibration',[['strong','Strong'],['on','Standard'],['light','Light'],['off','Off']],'strong','Engine, gear shifts, braking, cornering load, slides, kerbs, surfaces and contact all reach the controller. Xbox controllers in Chrome and Edge on Windows also rumble in the triggers.']]]
 ];
 function settingsView(){
   $('settingsBody').innerHTML='<div class="prefs"><div>'+prefs.map(([title,rows])=>'<h3>'+title+'</h3>'+rows.map(([id,label,options,,note])=>

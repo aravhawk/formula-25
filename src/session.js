@@ -27,7 +27,7 @@ export class Session{
     this.game=game;this.hooks=hooks;this.world=world;this.cockpit=cockpit;this.eye=new DriverView(!matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.pose=Object.create(game.player);
     this.before={distance:game.player.distance,heading:game.player.heading,offset:game.player.offset};
-    const level=read('vibration','on');
+    const level=read('vibration','strong');
     this.line=true;this.keys=new Set();this.touches=new Map();this.lastButtons=null;this.haptics=level==='off'?null:new Haptics(level);this.abort=new AbortController();
     this.phase='driving';this.nextSave=0;this.paused=true;this.active=true;this.previous=0;this.acc=0;this.hudAfter=0;this.shakeAfter=0;this.held=0;shown.clear();this.readout=read('readout','on')==='on';
     const on=(target,type,callback)=>target.addEventListener(type,callback,{signal:this.abort.signal});
