@@ -9,6 +9,7 @@ import {STEP,tyreColor} from './racing.js';
 import {clamp,formatTime,read} from './data.js';
 import {input,noteDevice,fullscreen} from './menu.js';
 import {activePad,padLabels,rumble,stick} from './gamepad.js';
+import {Haptics} from './haptics.js';
 import {wrap} from './physics.js';
 export const audio=new MotorAudio();
 const $=id=>document.getElementById(id);
@@ -26,7 +27,8 @@ export class Session{
     this.game=game;this.hooks=hooks;this.world=world;this.cockpit=cockpit;this.eye=new DriverView(!matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.pose=Object.create(game.player);
     this.before={distance:game.player.distance,heading:game.player.heading,offset:game.player.offset};
-    this.line=true;this.keys=new Set();this.touches=new Map();this.lastButtons=null;this.vibrate=read('vibration','on')==='on';this.abort=new AbortController();
+    const level=read('vibration','strong');
+    this.line=true;this.keys=new Set();this.touches=new Map();this.lastButtons=null;this.haptics=level==='off'?null:new Haptics(level);this.abort=new AbortController();
     this.phase='driving';this.nextSave=0;this.paused=true;this.active=true;this.previous=0;this.acc=0;this.hudAfter=0;this.shakeAfter=0;this.held=0;shown.clear();this.readout=read('readout','on')==='on';
     const on=(target,type,callback)=>target.addEventListener(type,callback,{signal:this.abort.signal});
     on(window,'resize',()=>this.resize());on(window,'blur',()=>this.pause());
@@ -91,16 +93,9 @@ export class Session{
     return {steer:clamp(steer,-1,1),throttle:Math.max(+held.has('throttle'),pedal(7)),brake:Math.max(+held.has('brake'),pedal(6)),
       boost:held.has('boost')||v(0)>.5,drs:held.has('drs')||v(1)>.5};
   }
-  // Kerbs and slides reach the hands through the light motor, contact through the heavy one.
-  shake(d){
-    if(!this.vibrate||input.device!=='pad')return;
-    const roughness=Math.max(...Array.from(d.suspension.contacts,Math.abs));
-    rumble(this.pad,Math.min(.8,Math.max(0,roughness-.006)*Math.min(1,d.speed/18)*22+d.slip*.45),
-      Math.max(d.hit||0,d.wallSide?Math.min(.7,d.speed*.016):0));
-  }
   pause(){if(this.paused||!this.active||this.game.state==='finished')return;
     this.paused=true;cancelAnimationFrame(this.frameId);this.keys.clear();this.touches.clear();audio.silence();rumble(this.pad);this.hooks.pause(this);}
-  resume(){if(!this.paused||!this.active)return;this.paused=false;this.padLost=false;this.lastButtons=null;this.previous=0;this.frameId=requestAnimationFrame(this.frame);}
+  resume(){if(!this.paused||!this.active)return;this.haptics?.reset();this.paused=false;this.padLost=false;this.lastButtons=null;this.previous=0;this.frameId=requestAnimationFrame(this.frame);}
   async restoreGraphics(){
     if(this.recovering)return;
     this.recovering=true;audio.silence();this.keys.clear();this.touches.clear();
@@ -171,7 +166,10 @@ export class Session{
       console.warn(this.world.backend+' frame failed',error.message);void this.restoreGraphics();return;
     }
     this.cockpit.draw(d,this.eye,light);audio.update(d);
-    if(now>=this.shakeAfter){this.shake(d);this.shakeAfter=now+90;}
+    if(this.haptics&&input.device==='pad'){
+      const mix=this.haptics.update(d,dt);
+      if(now>=this.shakeAfter){rumble(this.pad,mix);this.shakeAfter=now+33;}
+    }
     if(now>=this.hudAfter){this.hud();if(!this.world.mirrors)updateMirrors(this.game);this.hudAfter=now+80;}
     if(this.game.state==='finished'){audio.silence();rumble(this.pad);this.game.settle();this.phase='results';this.paused=true;
       this.hooks.save(this,true).then(()=>{if(this.active)this.hooks.finish(this);});return;}

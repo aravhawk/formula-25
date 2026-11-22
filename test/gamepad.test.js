@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {activePad,padFamily,padLabels,readPad,stick} from '../src/gamepad.js';
+import {activePad,padFamily,padLabels,readPad,rumble,stick} from '../src/gamepad.js';
 const pad=({id='Xbox Wireless Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b13)',mapping='standard',index=0,buttons=17,axes=[0,0,0,0],down={}}={})=>({
   id,mapping,index,connected:true,axes,buttons:Array.from({length:buttons},(_,i)=>({pressed:(down[i]||0)>.5,value:down[i]||0}))
 });
@@ -51,4 +51,23 @@ test('The pad in use is found on any slot and changes only when another is press
 test('Stick drift is ignored and full deflection reaches full lock',()=>{
   assert.equal(stick(.07),0);assert.equal(stick(-.05),0);assert.equal(stick(1),1);assert.equal(stick(-1),-1);
   assert(stick(.1)>0&&stick(.1)<.05);assert(Math.abs(stick(-.5)+.4667)<.001);
+});
+test('Rumble uses dual-rumble when trigger-rumble is unavailable',()=>{
+  for(const effects of [undefined,['dual-rumble']]){
+    const calls=[],motor={effects,playEffect:(...args)=>{calls.push(args);return Promise.resolve();}};
+    rumble({vibrationActuator:motor},{strong:1.2,weak:.5,left:.8,right:.4});
+    assert.equal(calls[0][0],'dual-rumble');assert.deepEqual(calls[0][1],{duration:120,startDelay:0,strongMagnitude:1,weakMagnitude:.5,leftTrigger:.8,rightTrigger:.4});
+  }
+});
+test('Rumble adds trigger motors when the actuator supports them',()=>{
+  const calls=[],motor={effects:['dual-rumble','trigger-rumble'],playEffect:(...args)=>{calls.push(args);return Promise.resolve();}};
+  rumble({vibrationActuator:motor},{strong:.2,weak:.3,left:.4,right:.6});
+  assert.equal(calls[0][0],'trigger-rumble');assert.equal(calls[0][1].leftTrigger,.4);assert.equal(calls[0][1].rightTrigger,.6);
+  rumble({vibrationActuator:motor});
+});
+test('Silence resets the actuator once and not on repeated silent calls',()=>{
+  const calls=[],motor={effects:['dual-rumble'],playEffect:(...args)=>{calls.push(['play',...args]);return Promise.resolve();},reset:()=>{calls.push(['reset']);return Promise.resolve();}};
+  rumble({vibrationActuator:motor},{strong:.2});
+  rumble({vibrationActuator:motor});rumble({vibrationActuator:motor});
+  assert.deepEqual(calls.map(call=>call[0]),['play','reset']);
 });
