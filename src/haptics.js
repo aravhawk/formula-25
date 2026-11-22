@@ -14,7 +14,7 @@ export class Haptics{
   update(d={},dt=0){
     dt=clamp(value(dt),0,.1);d??={};
     const speed=Math.max(0,value(d.speed)),rpm=clamp(value(d.rpm)),throttle=clamp(value(d.throttle));
-    const braking=clamp(value(d.braking)),longG=value(d.longitudinalG),latG=value(d.lateralG),hit=clamp(value(d.hit));
+    const braking=clamp(value(d.braking)),longG=value(d.longitudinalG)*(d.reverse?-1:1),latG=value(d.lateralG),hit=clamp(value(d.hit));
     const c=empty(),p=empty(),phase=(name,rate,duty=.3)=>{
       const next=((this.phases[name]||0)+dt*rate)%1;this.phases[name]=next;return next<duty?1:0;
     };

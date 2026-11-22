@@ -26,6 +26,14 @@ test('Heavy braking loads the heavy motor and left trigger',()=>{
   assert(mean(samples,'strong')>=.35&&mean(samples,'strong')<=.65);assert(mean(samples,'left')>=.25&&mean(samples,'left')<=.55);
   assert(mean(samples,'strong')>mean(mix(cruise),'strong'));
 });
+test('Reverse longitudinal G uses acceleration and braking signs consistently',()=>{
+  const accelerating=drive(),steady=drive();Object.assign(accelerating,{reverse:true,throttle:1,longitudinalG:-.3});Object.assign(steady,{reverse:true,throttle:1});
+  const reverseAccel=mix(accelerating).at(-1),noLoad=mix(steady).at(-1);
+  assert(reverseAccel.strong<=noLoad.strong+.1);assert.equal(reverseAccel.left,0);
+  const braking=drive(),noLongitudinalLoad=drive();
+  Object.assign(braking,{reverse:true,braking:1,longitudinalG:1});Object.assign(noLongitudinalLoad,{reverse:true,braking:1});
+  assert(mix(braking).at(-1).strong>mix(noLongitudinalLoad).at(-1).strong);
+});
 test('Lockup pulses the weak motor and loads the left trigger',()=>{
   const d=drive();Object.assign(d,{speed:80,braking:1});d.tyres.locked[0]=d.tyres.locked[1]=1;
   const samples=mix(d);assert(mean(samples,'left')>=.8);assert(peak(samples,'weak')>=.6);assert(stdev(samples,'weak')>=.08);
