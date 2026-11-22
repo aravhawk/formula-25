@@ -51,12 +51,15 @@ export function activePad(pads=listed()){
   slot=chosen?chosen.pad.index:-1;
   return chosen;
 }
-// The light motor carries kerbs and slides, the heavy one carries contact. Call it several times a second.
-export function rumble(pad,weak=0,strong=0){
-  const motor=pad?.vibrationActuator;if(!motor?.playEffect)return;
+// Heavy and light motors carry layered road feel; supported Xbox pads add trigger motors.
+export function rumble(pad,{strong=0,weak=0,left=0,right=0}={}){
+  const motor=pad?.vibrationActuator;if(!motor)return;
   try{
-    if(weak<.03&&strong<.03){if(shaking){shaking=false;motor.reset?.()?.catch?.(()=>{});}return;}
+    if([strong,weak,left,right].every(value=>(Number.isFinite(value)?value:0)<.03)){if(shaking){shaking=false;motor.reset?.()?.catch?.(()=>{});}return;}
     shaking=true;
-    motor.playEffect('dual-rumble',{duration:160,weakMagnitude:Math.min(1,weak),strongMagnitude:Math.min(1,strong)})?.catch?.(()=>{});
+    const params={duration:120,startDelay:0,strongMagnitude:clampMotor(strong),weakMagnitude:clampMotor(weak),leftTrigger:clampMotor(left),rightTrigger:clampMotor(right)};
+    const effect=(left>.03||right>.03)&&motor.effects?.includes('trigger-rumble')?'trigger-rumble':'dual-rumble';
+    motor.playEffect(effect,params)?.catch?.(()=>{});
   }catch{}
 }
+const clampMotor=value=>Math.min(1,Math.max(0,Number.isFinite(value)?value:0));
