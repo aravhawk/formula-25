@@ -16,7 +16,7 @@ kbd{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 
 .backdrop:after{background:var(--bg);opacity:0;transition:opacity .25s}#garage:not([data-view=race]) .backdrop:after{opacity:.96}
 .topbar{flex:none;height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 var(--gutter);border-bottom:1px solid var(--line)}
 .brand{display:inline-flex;align-items:center;gap:6px;font:italic 800 22px var(--cond);letter-spacing:-.02em}.brand em{color:var(--signal)}
-.brand-mark{width:22px;height:13px;transform:skewX(-32deg);margin-right:6px;border-left:4px solid var(--signal);border-right:8px solid var(--signal);background:linear-gradient(90deg,transparent 30%,var(--signal) 30% 68%,transparent 68%)}
+.brand-mark{width:24px;height:18px;margin-right:4px;background:url('/mark.svg') center/contain no-repeat}
 #tabs{display:flex;align-items:center;gap:2px;align-self:stretch}#tabs button{position:relative;height:100%;padding:0 16px;font:italic 700 19px var(--cond);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);transition:color .15s}#tabs button:hover{color:var(--text)}
 #tabs button:after{content:'';position:absolute;left:12px;right:12px;bottom:-1px;height:3px;background:var(--accent);transform:skewX(-30deg) scaleX(0);transition:transform .2s var(--out)}#tabs [aria-current]{color:var(--text)}#tabs [aria-current]:after{transform:skewX(-30deg) scaleX(1)}
 .glyph{display:flex;margin:0 6px}.glyph kbd{margin:0;opacity:.75}
