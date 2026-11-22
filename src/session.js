@@ -29,7 +29,7 @@ export class Session{
     this.before={distance:game.player.distance,heading:game.player.heading,offset:game.player.offset};
     const level=read('vibration','strong');
     this.line=true;this.keys=new Set();this.touches=new Map();this.lastButtons=null;this.haptics=level==='off'?null:new Haptics(level);this.abort=new AbortController();
-    this.phase='driving';this.nextSave=0;this.paused=true;this.active=true;this.previous=0;this.acc=0;this.hudAfter=0;this.shakeAfter=0;this.held=0;shown.clear();this.readout=read('readout','on')==='on';
+    this.phase='driving';this.nextSave=0;this.paused=true;this.active=true;this.previous=0;this.acc=0;this.hudAfter=0;this.shakeAfter=0;this.held=0;this.restored=false;shown.clear();this.readout=read('readout','on')==='on';
     const on=(target,type,callback)=>target.addEventListener(type,callback,{signal:this.abort.signal});
     on(window,'resize',()=>this.resize());on(window,'blur',()=>this.pause());
     on(document,'visibilitychange',()=>{if(document.hidden){if(this.paused)this.hooks.save(this,true);else this.pause();}});
@@ -99,9 +99,10 @@ export class Session{
   async restoreGraphics(){
     if(this.recovering)return;
     this.recovering=true;audio.silence();this.keys.clear();this.touches.clear();
-    const backend=this.world.backend==='WebGPU'?'webgl':'canvas';
-    try{this.world.dispose();}catch(error){console.warn('Device cleanup',error.message);}
-    const replacement=await World.create($('viewport'),this.game,{...graphicsPrefs(),backend});
+    // A lost context gets one fresh WebGL 2 scene. A second loss settles on the 2D canvas.
+    const lite=this.restored;this.restored=true;
+    try{this.world.dispose();}catch(error){console.warn('Context cleanup',error.message);}
+    const replacement=await World.create($('viewport'),this.game,{...graphicsPrefs(),lite});
     if(!this.active){replacement.dispose();return;}
     this.world=replacement;this.recovering=false;this.resize();this.previous=0;this.acc=0;
     this.game.say('Graphics restored · '+replacement.backend,3);

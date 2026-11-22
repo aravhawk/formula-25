@@ -2,7 +2,7 @@
 
 Use Node.js 24 LTS. Run `npm ci` and `npm run dev` from the repository root. Run `npm test` and `npm run build` before opening a pull request. The build is self-contained. Python is only needed to regenerate season data.
 
-For handling or contact issues, include the venue, position on the lap, assists, inputs and a repeatable driving scenario. For rendering issues, include the browser, graphics mode, renderer and cockpit frame timing. Report bugs or discuss changes in the [issue tracker](https://github.com/aravhawk/formula-25/issues).
+For handling or contact issues, include the venue, position on the lap, assists, inputs and a repeatable driving scenario. For rendering issues, include the browser, graphics mode and cockpit frame timing. Report bugs or discuss changes in the [issue tracker](https://github.com/aravhawk/formula-25/issues).
 
 For security issues, follow [SECURITY.md](SECURITY.md). Participants are expected to follow the [code of conduct](CODE_OF_CONDUCT.md).
 
