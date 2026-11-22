@@ -1,0 +1,47 @@
+<!doctype html>
+<!--
+  Source for public/og-image.jpg, the 1200x630 Open Graph and Twitter card image.
+  It reuses the garage's own fonts, colours, brand mark, car number tag and paddock artwork,
+  so the preview matches the site. To regenerate it:
+    1. npm run dev
+    2. open http://localhost:5173/scripts/og-image.html in a browser with a 1200x630 viewport
+    3. save a screenshot of the page as public/og-image.jpg (any headless Chromium works)
+  The page is not part of the production build: only index.html is a Vite entry.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=1200"><title>Formula 25 social preview</title>
+<link rel="stylesheet" href="/assets/fonts.css">
+<style>
+:root{--bg:#05070c;--text:#f4f6f9;--muted:#a3adbc;--accent:#ffd21f;--signal:#ff2b4f;--navy:#1a3a8f;--line:#ffffff1f;--cond:'Barlow Condensed','Arial Narrow',sans-serif;--font:Barlow,Arial,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1200px;height:630px;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font)}
+.card{position:relative;width:1200px;height:630px;overflow:hidden;isolation:isolate}
+/* The garage artwork, scaled so the car sits right of the text column and its left edge melts into the page colour. */
+.photo{position:absolute;z-index:-2;top:-30px;right:0;width:1106px;height:737px;background:url('/assets/paddock-cover.webp') center/100% 100% no-repeat;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 24%);mask-image:linear-gradient(90deg,transparent 0,#000 24%)}
+/* Same scrim as the garage backdrop. */
+.scrim{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,#05070ce6 0,#05070c33 18%,#05070c00 46%,#05070c99 78%),linear-gradient(90deg,#05070cf7 0,#05070cc9 30%,#05070c00 62%)}
+.top{position:absolute;left:56px;right:56px;top:42px;display:flex;align-items:center;justify-content:space-between}
+.brand{display:inline-flex;align-items:center;gap:8px;font:italic 800 38px/1 var(--cond);letter-spacing:-.02em;text-transform:uppercase}.brand em{color:var(--signal);font-style:italic}
+.brand-mark{width:38px;height:22px;transform:skewX(-32deg);margin-right:10px;border-left:7px solid var(--signal);border-right:14px solid var(--signal);background:linear-gradient(90deg,transparent 30%,var(--signal) 30% 68%,transparent 68%)}
+.kind{font:600 22px/1.2 var(--cond);letter-spacing:.07em;text-transform:uppercase;color:#dfe4ec}
+.hero{position:absolute;left:56px;top:138px}
+.label{font:600 22px/1.2 var(--cond);letter-spacing:.07em;text-transform:uppercase;color:#dfe4ec}
+h1{font:italic 800 190px/.84 var(--cond);letter-spacing:-.06em;margin:16px 0 22px -.04em}h1 span{color:var(--accent)}
+.driver{display:flex;align-items:center;gap:16px;font:italic 700 32px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase}
+.driver b{display:grid;place-items:center;width:50px;height:46px;background:var(--navy);color:var(--accent);font:italic 800 34px/1 var(--cond);transform:skewX(-12deg)}
+.dock{position:absolute;left:0;right:0;bottom:0;height:106px;padding:0 56px 16px;display:flex;align-items:center;justify-content:space-between;background:#070a11f5;border-top:1px solid var(--line)}
+.specs{display:flex;gap:56px}.specs div{display:flex;flex-direction:column;gap:6px}
+.specs dt{font:600 19px/1.2 var(--cond);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.specs dd{font:600 38px/1 var(--cond);letter-spacing:.02em}
+.host{font:italic 700 32px/1 var(--cond);letter-spacing:.04em;color:var(--text)}
+</style></head>
+<body>
+<div class="card" id="card">
+ <div class="photo" role="img" aria-label="Red Bull RB21 cornering on a kerb at sunset"></div><div class="scrim"></div>
+ <div class="top"><div class="brand"><i class="brand-mark"></i>Formula <em>25</em></div><div class="kind">Cockpit racing simulator</div></div>
+ <div class="hero"><p class="label">Oracle Red Bull Racing · 2025</p><h1>RB<span>21</span></h1><div class="driver"><b>1</b>Max Verstappen</div></div>
+ <div class="dock">
+  <dl class="specs"><div><dt>Circuits</dt><dd>24</dd></div><div><dt>Season</dt><dd>2025</dd></div><div><dt>Rivals</dt><dd>19</dd></div><div><dt>Sprint weekends</dt><dd>6</dd></div></dl>
+  <span class="host">formula.aravhawk.com</span>
+ </div>
+</div>
+</body></html>

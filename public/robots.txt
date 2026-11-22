@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://formula.aravhawk.com/sitemap.xml

@@ -19,7 +19,7 @@ Open the local URL printed by Vite. Choose **First drive** to learn the controls
 
 ## Deploy to Vercel
 
-Import the GitHub repository as a new Vercel project. Use the repository root, the **Vite** preset and Node.js **24.x**. The included configuration runs `npm ci`, builds with `npm run build` and serves `dist`. The app needs no API keys, server database or environment variables. Use the same production domain across releases so players keep access to their browser saves.
+Import the GitHub repository as a new Vercel project. Use the repository root, the **Vite** preset and Node.js **24.x**. The included configuration runs `npm ci`, builds with `npm run build` and serves `dist`. The app needs no API keys, server database or environment variables. Use the same production domain across releases so players keep access to their browser saves. The canonical link, the Open Graph and Twitter card tags and the JSON-LD in `index.html`, plus `public/robots.txt` and `public/sitemap.xml`, name `https://formula.aravhawk.com`. If you deploy under another domain, replace it in those files and in `test/metadata.test.js`. The 1200 by 630 share image is `public/og-image.jpg`, and its source is `scripts/og-image.html`. The apple-touch-icon and favicon are built from `scripts/icons.html` and `scripts/favicon-ico.mjs`. The game has one page and one language, so the sitemap lists one URL and there is no hreflang.
 
 ## Autosave and recovery
 
