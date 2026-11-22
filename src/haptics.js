@@ -27,13 +27,13 @@ export class Haptics{
     c.strong+=.35*clamp(-longG/4.5);
     if(braking>.05){c.left+=.25*braking+.1*clamp(-longG/4.5);}
 
-    const locked=Math.max(0,...Array.from(d.tyres?.locked||[],v=>clamp(value(v))));
-    const wheelspin=clamp(value(d.wheelspin));
+    const pit=!!d.pit,locked=pit?0:Math.max(0,...Array.from(d.tyres?.locked||[],v=>clamp(value(v))));
+    const wheelspin=pit?0:clamp(value(d.wheelspin));
     c.left+=.9*locked;c.strong+=.2*locked;p.weak+=.7*locked*phase('lock',14,.28);
     c.right+=.9*wheelspin;c.strong+=.3*wheelspin;p.weak+=.55*wheelspin*phase('spin',16,.28);
     c.strong+=.16*clamp(Math.abs(latG)/4.5);
 
-    const slipF=Math.abs(value(d.slipF)),slipR=Math.abs(value(d.slipR));
+    const slipF=pit?0:Math.abs(value(d.slipF)),slipR=pit?0:Math.abs(value(d.slipR));
     const under=clamp((slipF-.8*.105)/(.6*.105))*clamp(speed/10);
     const over=clamp((slipR-1.1*.105)/(1.5*.105))*clamp(speed/8);
     p.weak+=.35*under*(.4+.6*this.noise());c.strong+=.1*under;

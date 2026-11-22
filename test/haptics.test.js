@@ -34,6 +34,15 @@ test('Wheelspin loads the right trigger and pulses the weak motor',()=>{
   const d=drive();Object.assign(d,{speed:30,rpm:.8,throttle:1,wheelspin:1});
   const samples=mix(d);assert(mean(samples,'right')>=.8);assert(peak(samples,'weak')>=.5);
 });
+test('Pit feedback ignores stale lockup, wheelspin and tyre slip',()=>{
+  const pit=drive(),clear=drive();Object.assign(pit,{speed:50,pit:{},wheelspin:1,slipF:.2,slipR:.3});Object.assign(clear,{speed:50});
+  pit.tyres.locked[0]=pit.tyres.locked[1]=1;
+  const a=new Haptics('on',13),b=new Haptics('on',13);
+  for(let i=0;i<60;i++){
+    const output=a.update(pit,dt),baseline=b.update(clear,dt);
+    for(const channel of ['weak','left','right'])assert.equal(output[channel],baseline[channel]);
+  }
+});
 test('Cornering and front scrub build a sustained load',()=>{
   const d=drive();Object.assign(d,{speed:50,lateralG:4,slipF:.11});
   const samples=mix(d);assert(mean(samples,'strong')>=.25&&mean(samples,'strong')<=.55);assert(mean(samples,'weak')>=.2);
