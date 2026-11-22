@@ -8,7 +8,7 @@ const empty=()=>({strong:0,weak:0,left:0,right:0});
 export class Haptics{
   constructor(level='on',seed=1){this.level=LEVELS[level]??1;this.seed=(seed>>>0)||1;this.reset();}
   reset(){
-    this.smooth=empty();this.phases={};this.lastGear=null;this.lastHit=0;this.gearKick=null;this.impact=null;this.randomState=this.seed;
+    this.smooth=empty();this.phases={};this.lastGear=null;this.lastHit=null;this.gearKick=null;this.impact=null;this.randomState=this.seed;
   }
   noise(){this.randomState=(1664525*this.randomState+1013904223)>>>0;return this.randomState/4294967296;}
   update(d={},dt=0){
@@ -54,8 +54,9 @@ export class Haptics{
     const suspension=Array.from(d.suspension?.velocity||[],v=>Math.abs(value(v))).reduce((a,b)=>a+b,0);
     c.strong+=clamp(suspension*.06,0,.35)+.2*clamp(Math.abs(value(d.suspension?.verticalG))-.3);
     c.strong+=.05*clamp((speed-60)/35)*random;
-    if(hit>this.lastHit+.05)this.impact={age:0,amplitude:hit};
-    this.lastHit=hit;c.strong+=.5*hit;
+    if(this.lastHit===null)this.lastHit=hit;
+    else{if(hit>this.lastHit+.05)this.impact={age:0,amplitude:hit};this.lastHit=hit;}
+    c.strong+=.5*hit;
     if(value(d.wallSide)!==0&&speed>1){const scrape=clamp(speed/30);c.weak+=.5*scrape;p.weak+=.1*scrape*this.noise();c.strong+=.3*scrape;}
 
     const gear=value(d.gear);

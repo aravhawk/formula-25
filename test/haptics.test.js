@@ -80,6 +80,12 @@ test('Impact has an immediate four-motor kick that decays',()=>{
   let after;for(let i=1;i<=24;i++){d.hit=Math.exp(-9*i*dt);after=h.update(d,dt);}
   assert(after.strong<.5);
 });
+test('Reset records the current hit without replaying it, then detects a later rise',()=>{
+  const d=drive(),h=new Haptics();d.hit=.8;sequence(h,d);h.reset();
+  const resumed=h.update(d,dt),fresh=drive(),collision=new Haptics();collision.update(fresh,dt);fresh.hit=.8;
+  const genuine=collision.update(fresh,dt);assert(resumed.strong<.7);assert(resumed.strong<genuine.strong);
+  d.hit=1;assert(h.update(d,dt).strong>=.95);
+});
 test('Wall scrape is strong and rough',()=>{
   const d=drive();Object.assign(d,{speed:30,wallSide:1});
   const samples=mix(d);assert(mean(samples,'weak')>=.45);assert(mean(samples,'strong')>=.3);
