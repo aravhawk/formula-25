@@ -32,29 +32,24 @@ async function textures(software){
 }
 export class World{
   static async create(root,game,prefs=graphicsPrefs()){
-    const graphics=await createGraphics(prefs);
+    const graphics=createGraphics(prefs);
     if(!graphics)return new WorldLite(root,game);
-    const {renderer,label}=graphics,ultra=prefs.quality==='ultra';
+    const {renderer}=graphics,ultra=prefs.quality==='ultra';
     const software=prefs.quality==='performance'||(graphics.software&&!ultra);
     try{
       const id=String(game.event.round).padStart(2,'0');
       const [media,land,footprints]=await Promise.all([textures(software),new T.TextureLoader().loadAsync(assetUrl('land-'+id)),seasonData('buildings-'+id)]);
       land.colorSpace=T.SRGBColorSpace;land.anisotropy=4;
       const world=new World(root,game,renderer,{...media,land,footprints},software,ultra);
-      world.backend=label;
+      world.backend='WebGL 2';
       world.budget=graphics.software&&!ultra?285000:software?1.6e6:ultra?6.2e6:4.2e6;
       if(displayInterval&&displayInterval<.011)world.budget=Math.min(world.budget,ultra?3.6e6:2.5e6);
-      if(label==='WebGPU'){
-        renderer.onDeviceLost=()=>{world.lost=true;};
-        renderer.backend.device.addEventListener('uncapturederror',()=>{world.lost=true;},{once:true});
-      }
-      else renderer.domElement.addEventListener('webglcontextlost',()=>{world.lost=true;},{once:true});
+      renderer.domElement.addEventListener('webglcontextlost',()=>{world.lost=true;},{once:true});
       return world;
     }
     catch(error){
-      console.warn(label+' scene initialization',error.message);
-      renderer.dispose();renderer.forceContextLoss?.();
-      if(label==='WebGPU')return World.create(root,game,{...prefs,backend:'webgl'});
+      console.warn('Scene initialization',error.message);
+      renderer.dispose();renderer.forceContextLoss();
       return new WorldLite(root,game);
     }
   }
@@ -153,6 +148,6 @@ export class World{
     for(const m of materials){if(m.map&&!kept.has(m.map))texturesToFree.add(m.map);m.dispose();}
     for(const g of geom)g.dispose();for(const t of texturesToFree)t.dispose();
     if(!kept.has(this.scene.background))this.scene.background.dispose();
-    const device=this.renderer.backend?.device;this.renderer.dispose();this.renderer.forceContextLoss?.();device?.destroy();this.renderer.domElement.remove();
+    this.renderer.dispose();this.renderer.forceContextLoss();this.renderer.domElement.remove();
   }
 }

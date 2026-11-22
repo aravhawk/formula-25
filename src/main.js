@@ -181,7 +181,6 @@ function controlsView(){$('controlsBody').innerHTML=controlsPanel(input.device);
 const prefs=[
   ['Graphics',[
     ['quality','Quality',[['auto','Adaptive'],['ultra','Ultra'],['performance','Performance']],'auto','Ultra adds sharper shadows and mirrors and a higher resolution ceiling. Resolution adjusts to target 120 fps on high-refresh displays.'],
-    ['backend','Renderer',[['auto','Automatic'],['webgpu','WebGPU'],['webgl','WebGL 2'],['canvas','Canvas']],'auto','Automatic uses hardware WebGPU when it is available, then WebGL 2, then Canvas. If the picture stutters, try WebGL 2.'],
     ['readout','Frame readout',[['on','On'],['off','Off']],'on','Shows resolution, average fps and p95 frame time. At 120 fps each frame has 8.33 ms.']]],
   ['Driving',[
     ['traction','Traction control',[['full','Full'],['medium','Medium'],['off','Off']],'medium','Full keeps the rear tyres from spinning. Medium lets the rear slide under power. Off is how the real car runs: too much throttle in a low gear spins it.'],

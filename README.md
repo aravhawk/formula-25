@@ -70,7 +70,7 @@ Races run in dry conditions. Qualifying compares the player's elapsed time to Ve
 
 ### Graphics
 
-The game checks WebGPU presentation, with WebGL 2 and lightweight Canvas fallbacks. The 3D paths use environment lighting, local shadow maps and rear-facing scene capture. Adaptive resolution targets an 8.33 ms frame on high-refresh displays. The HUD reports average presented fps and the 95th-percentile frame interval.
+The game renders with WebGL 2. A lightweight Canvas view takes over when WebGL 2 cannot start or keeps losing its context. The 3D scene uses environment lighting, local shadow maps and rear-facing scene capture. Adaptive resolution targets an 8.33 ms frame on high-refresh displays. The HUD reports average presented fps and the 95th-percentile frame interval.
 
 ## Project layout
 
