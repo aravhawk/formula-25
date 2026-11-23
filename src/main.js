@@ -445,3 +445,8 @@ if(matchMedia('(pointer:fine)').matches&&!matchMedia('(prefers-reduced-motion: r
   const art=document.querySelector('.backdrop i');
   $('garage').addEventListener('pointermove',event=>{art.style.setProperty('--px',(event.clientX/innerWidth-.5).toFixed(3));art.style.setProperty('--py',(event.clientY/innerHeight-.5).toFixed(3));});
 }
+cards();hints();
+Promise.all([json('calendar'),json('qualifying'),json('sprints'),json('outlines')]).then(async([list,q,sp,lines])=>{
+  events=list;references=q;sprints=sp;outlines=lines;await refreshContinue();const setup=read('weekend',null);
+  if(setup&&Number.isInteger(setup.round)&&setup.round>=1&&setup.round<=24)await applyWeekend(setup);else await select(0);go('race');
+}).catch(()=>show('Garage','Season data unavailable','<p class="sheet-text">Serve the game over HTTP and reload this page.</p>',null,'narrow'));
