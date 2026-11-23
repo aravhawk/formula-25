@@ -10,6 +10,8 @@ import {clamp,formatTime,read} from './data.js';
 import {input,noteDevice,fullscreen} from './menu.js';
 import {activePad,padLabels,rumble,stick} from './gamepad.js';
 import {Haptics} from './haptics.js';
+import {Triggers} from './triggers.js';
+import {dualsense} from './dualsense.js';
 import {wrap} from './physics.js';
 export const audio=new MotorAudio();
 const $=id=>document.getElementById(id);
@@ -28,7 +30,7 @@ export class Session{
     this.pose=Object.create(game.player);
     this.before={distance:game.player.distance,heading:game.player.heading,offset:game.player.offset};
     const level=read('vibration','strong');
-    this.line=true;this.keys=new Set();this.touches=new Map();this.lastButtons=null;this.haptics=level==='off'?null:new Haptics(level);this.abort=new AbortController();
+    this.line=true;this.keys=new Set();this.touches=new Map();this.lastButtons=null;this.haptics=level==='off'?null:new Haptics(level);this.triggers=read('triggers','on')==='on'&&dualsense.supported?new Triggers(level==='off'?'on':level):null;this.abort=new AbortController();
     this.phase='driving';this.nextSave=0;this.paused=true;this.active=true;this.previous=0;this.acc=0;this.hudAfter=0;this.shakeAfter=0;this.held=0;this.restored=false;shown.clear();this.readout=read('readout','on')==='on';
     const on=(target,type,callback)=>target.addEventListener(type,callback,{signal:this.abort.signal});
     on(window,'resize',()=>this.resize());on(window,'blur',()=>this.pause());
@@ -95,7 +97,7 @@ export class Session{
   }
   pause(){if(this.paused||!this.active||this.game.state==='finished')return;
     this.paused=true;cancelAnimationFrame(this.frameId);this.keys.clear();this.touches.clear();audio.silence();rumble(this.pad);this.hooks.pause(this);}
-  resume(){if(!this.paused||!this.active)return;this.haptics?.reset();this.paused=false;this.padLost=false;this.lastButtons=null;this.previous=0;this.frameId=requestAnimationFrame(this.frame);}
+  resume(){if(!this.paused||!this.active)return;this.haptics?.reset();this.triggers?.reset();this.paused=false;this.padLost=false;this.lastButtons=null;this.previous=0;this.frameId=requestAnimationFrame(this.frame);}
   async restoreGraphics(){
     if(this.recovering)return;
     this.recovering=true;audio.silence();this.keys.clear();this.touches.clear();
@@ -167,8 +169,9 @@ export class Session{
       console.warn(this.world.backend+' frame failed',error.message);void this.restoreGraphics();return;
     }
     this.cockpit.draw(d,this.eye,light);audio.update(d);
-    if(this.haptics&&input.device==='pad'){
-      const mix=this.haptics.update(d,dt);
+    if((this.haptics||this.triggers)&&input.device==='pad'){
+      const mix=this.haptics?this.haptics.update(d,dt):{};
+      if(this.triggers)mix.triggers=this.triggers.update(d,dt);
       if(now>=this.shakeAfter){rumble(this.pad,mix);this.shakeAfter=now+33;}
     }
     if(now>=this.hudAfter){this.hud();if(!this.world.mirrors)updateMirrors(this.game);this.hudAfter=now+80;}
