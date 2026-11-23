@@ -191,12 +191,12 @@ const prefs=[
     ['line','Racing line',[['on','On'],['off','Off']],'on','Draws the recorded 2025 line on the road.'],
     ['sound','Sound',[['on','On'],['off','Off']],'on','Engine, tyre and menu sound.'],
     ['vibration','Controller vibration',[['strong','Strong'],['on','Standard'],['light','Light'],['off','Off']],'strong','Engine, gear shifts, braking, cornering load, slides, kerbs, surfaces and contact all reach the controller. Xbox controllers in Chrome and Edge on Windows also rumble in the triggers.'],
-    ['triggers','Adaptive triggers',[['on','On'],['off','Off']],'on','PlayStation DualSense only, over USB or Bluetooth in Chrome or Edge. L2 pushes back harder under braking and judders when a tyre locks. R2 is a light spring that buzzes on wheelspin, the rev limiter and gear changes. Connect the controller below once and it reconnects on later visits.']]]
+    ['triggers','Adaptive triggers',[['on','On'],['off','Off']],'on','PlayStation DualSense only, over USB or Bluetooth in Chrome or Edge. L2 and R2 push back from the first touch and build towards the end of travel. L2 gets heavier with speed and braking load and judders when a tyre locks. R2 stiffens with engine load and buzzes on wheelspin, the rev limiter and gear changes. Test triggers lets you feel them outside a race. Connect the controller below once and it reconnects on later visits.']]]
 ];
 function settingsView(){
   $('settingsBody').innerHTML='<div class="prefs"><div>'+prefs.map(([title,rows])=>'<h3>'+title+'</h3>'+rows.map(([id,label,options,,note])=>
     '<div class="pref"><span>'+label+'</span><select id="'+id+'" aria-label="'+label+'">'+options.map(([value,name])=>'<option value="'+value+'">'+name+'</option>').join('')+'</select><p>'+note+'</p></div>').join('')).join('')+
-    (dualsense.supported?'<h3>Controller</h3><button id="dualsense" class="pref"><span>DualSense adaptive triggers</span><kbd>'+(dualsense.ready?'Connected · '+(dualsense.transport==='bluetooth'?'Bluetooth':'USB'):dsError||'Connect')+'</kbd></button>':'')+
+    (dualsense.supported?'<h3>Controller</h3><button id="dualsense" class="pref"><span>DualSense adaptive triggers</span><kbd>'+(dualsense.ready?(dualsense.error?'Write failed':'Connected · '+(dualsense.transport==='bluetooth'?'Bluetooth':'USB')):dsError||'Connect')+'</kbd></button>'+(dualsense.ready?'<button id="dualsenseTest" class="pref"><span>Test triggers</span><kbd>Press L2 and R2</kbd></button>':''):'')+
     '<h3>Display</h3><button id="fullscreen" class="pref"><span>Fullscreen</span><kbd>F</kbd></button>'+(installPrompt?'<button id="install" class="pref"><span>Install as an app</span>'+arrow+'</button>':'')+
     '<h3>About</h3><button id="credits" class="pref"><span>Circuit and car data</span>'+arrow+'</button></div><aside class="pref-note" id="prefNote"></aside></div>';
   for(const [,rows] of prefs)for(const [id,,,fallback] of rows){
@@ -210,6 +210,7 @@ function settingsView(){
   };
   body.onpointerover=body.onfocusin=event=>note(event.target);note(body.querySelector('.pref'));
   bind('credits',credits);bind('fullscreen',fullscreen);
+  if($('dualsenseTest'))bind('dualsenseTest',()=>dualsense.test());
   if($('dualsense'))bind('dualsense',async()=>{
     dsError='';
     try{await dualsense.connect();}catch(error){if(error.name!=='NotFoundError')dsError='Could not open';}
@@ -444,8 +445,3 @@ if(matchMedia('(pointer:fine)').matches&&!matchMedia('(prefers-reduced-motion: r
   const art=document.querySelector('.backdrop i');
   $('garage').addEventListener('pointermove',event=>{art.style.setProperty('--px',(event.clientX/innerWidth-.5).toFixed(3));art.style.setProperty('--py',(event.clientY/innerHeight-.5).toFixed(3));});
 }
-cards();hints();
-Promise.all([json('calendar'),json('qualifying'),json('sprints'),json('outlines')]).then(async([list,q,sp,lines])=>{
-  events=list;references=q;sprints=sp;outlines=lines;await refreshContinue();const setup=read('weekend',null);
-  if(setup&&Number.isInteger(setup.round)&&setup.round>=1&&setup.round<=24)await applyWeekend(setup);else await select(0);go('race');
-}).catch(()=>show('Garage','Season data unavailable','<p class="sheet-text">Serve the game over HTTP and reload this page.</p>',null,'narrow'));

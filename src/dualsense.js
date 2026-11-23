@@ -3,23 +3,28 @@
 const SONY=0x054c,FILTERS=[{vendorId:SONY,productId:0x0ce6},{vendorId:SONY,productId:0x0df2}];
 const USB_REPORT=0x02,BT_REPORT=0x31,CALIBRATION=0x05,COMMON=47;
 const off=()=>Uint8Array.of(0x05,0,0,0,0,0,0,0,0,0,0);
-const zones=(position,value)=>{let active=0,force=0;for(let i=position;i<10;i++){active|=1<<i;force+=value*2**(3*i);}return [active,force];};
 const clamp=(value,low,high)=>Math.min(high,Math.max(low,Number.isFinite(value)?Math.round(value):low));
-// Effects are a mode byte followed by ten parameter bytes, using Sony's zones: ten steps of trigger travel.
+// An effect is a mode byte then ten parameter bytes. Trigger travel is split into ten zones, each with a strength from 1 to 8 and
+// a bit saying whether it is active.
+const pack=(mode,strengths)=>{
+  const out=Uint8Array.of(mode,0,0,0,0,0,0,0,0,0,0);let active=0,force=0;
+  for(let i=0;i<10;i++){
+    const strength=clamp(strengths[i],0,8);if(!strength)continue;
+    active|=1<<i;force+=(strength-1)*2**(3*i);
+  }
+  if(!active)return off();
+  out[1]=active&255;out[2]=active>>8;
+  for(let i=0;i<4;i++)out[3+i]=Math.floor(force/2**(8*i))&255;
+  return out;
+};
 export const effects={
   off,
-  // Steady resistance from `position` to the end of travel. Strength runs 1 to 8.
-  feedback(position,strength){
-    strength=clamp(strength,0,8);if(!strength)return off();
-    const [active,force]=zones(clamp(position,0,9),strength-1),out=new Uint8Array(11);
-    out[0]=0x21;out[1]=active&255;out[2]=active>>8;
-    for(let i=0;i<4;i++)out[3+i]=Math.floor(force/2**(8*i))&255;
-    return out;
-  },
-  // Buzz from `position` to the end of travel. Amplitude runs 1 to 8, frequency is in Hz.
-  vibration(position,amplitude,frequency){
-    amplitude=clamp(amplitude,0,8);frequency=clamp(frequency,0,255);if(!amplitude||!frequency)return off();
-    const out=effects.feedback(position,amplitude);out[0]=0x26;out[10]=0;out[9]=frequency;return out;
+  // Resistance in each zone of travel, ten values from 0 to 8. A zero leaves that zone free.
+  resistance:strengths=>pack(0x21,strengths),
+  // A buzz through the whole travel. Amplitude runs 1 to 8, frequency is in Hz.
+  vibration(amplitude,frequency){
+    frequency=clamp(frequency,0,255);if(!frequency)return off();
+    const out=pack(0x26,Array(10).fill(amplitude));if(out[0]===0x26)out[9]=frequency;return out;
   }
 };
 const table=Array.from({length:256},(_,n)=>{for(let k=0;k<8;k++)n=n&1?0xEDB88320^n>>>1:n>>>1;return n>>>0;});
@@ -40,7 +45,7 @@ export function buildReport({transport='usb',seq=0,strong=0,weak=0,left=off(),ri
 const hid=()=>globalThis.navigator?.hid;
 const wanted=device=>FILTERS.some(f=>f.vendorId===device.vendorId&&f.productId===device.productId);
 class DualSense{
-  device=null;transport='usb';seq=0;busy=false;queued=null;sent=null;refreshAt=0;
+  device=null;transport='usb';seq=0;busy=false;queued=null;sent=null;refreshAt=0;error=null;
   get supported(){return !!hid();}
   get ready(){return !!this.device?.opened;}
   async connect(){const [device]=await hid().requestDevice({filters:FILTERS});if(device)await this.open(device);}
@@ -51,6 +56,14 @@ class DualSense{
       if(!wanted(device))continue;
       try{await this.open(device);return;}catch{}
     }
+  }
+  // A progressive wall on both triggers, then a buzz, so the effects can be felt without starting a race.
+  async test(){
+    const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    const wall=effects.resistance([1,2,3,4,5,6,7,8,8,8]),buzz=effects.vibration(6,40);
+    this.send({},{left:wall,right:wall});await wait(2500);
+    this.send({},{left:buzz,right:buzz});await wait(1500);
+    this.send();
   }
   async open(device){
     if(!device.opened)await device.open();
@@ -67,11 +80,14 @@ class DualSense{
     const key=left.join()+'|'+right.join(),triggers=key!==this.sent||now>=this.refreshAt;
     const report=buildReport({transport:this.transport,seq:this.seq,strong,weak,left,right,triggers});
     this.seq=(this.seq+1)&15;this.busy=true;
-    this.device.sendReport(report.id,report.data).then(()=>{if(triggers){this.sent=key;this.refreshAt=now+1000;}},()=>{this.sent=null;}).finally(()=>{
+    this.device.sendReport(report.id,report.data).then(()=>{this.error=null;if(triggers){this.sent=key;this.refreshAt=now+1000;}},error=>{
+      this.sent=null;if(this.error?.message!==error.message)console.warn('DualSense write failed',error);this.error=error;
+    }).finally(()=>{
       this.busy=false;const next=this.queued;this.queued=null;if(next)this.send(...next);
     });
   }
 }
 export const dualsense=new DualSense();
+
 hid()?.addEventListener('disconnect',event=>{if(event.device===dualsense.device)dualsense.device=null;});
 hid()?.addEventListener('connect',event=>{if(!dualsense.ready&&wanted(event.device))dualsense.open(event.device).catch(()=>{});});
