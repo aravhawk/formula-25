@@ -1,4 +1,5 @@
 // Xbox and PlayStation pads on any slot, read in the standard layout whatever the browser reports.
+import {dualsense} from './dualsense.js';
 const names={
   xbox:{south:'A',east:'B',west:'X',north:'Y',l1:'LB',r1:'RB',l2:'LT',r2:'RT',select:'View',start:'Menu',stick:'L stick',dpad:'D-pad',up:'D-pad ↑',down:'D-pad ↓'},
   ps:{south:'✕',east:'○',west:'□',north:'△',l1:'L1',r1:'R1',l2:'L2',r2:'R2',select:'Create',start:'Options',stick:'L stick',dpad:'D-pad',up:'D-pad ↑',down:'D-pad ↓'}
@@ -52,7 +53,9 @@ export function activePad(pads=listed()){
   return chosen;
 }
 // Heavy and light motors carry layered road feel; supported Xbox pads add trigger motors.
-export function rumble(pad,{strong=0,weak=0,left=0,right=0}={}){
+// A DualSense opened over WebHID takes the same mix, plus the adaptive trigger effects in `triggers`.
+export function rumble(pad,{strong=0,weak=0,left=0,right=0,triggers}={}){
+  if(pad&&dualsense.ready&&padFamily(pad.id)==='ps'){dualsense.send({strong,weak},triggers);return;}
   const motor=pad?.vibrationActuator;if(!motor)return;
   try{
     if([strong,weak,left,right].every(value=>(Number.isFinite(value)?value:0)<.03)){if(shaking){shaking=false;motor.reset?.()?.catch?.(()=>{});}return;}

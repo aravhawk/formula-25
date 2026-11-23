@@ -11,6 +11,7 @@ import {championshipTable,recordResult} from './championship.js';
 import {controlsPanel,wireControls,controlCard} from './controls.js';
 import {input,blip,moveFocus,watchGamepad,hintBar,glyph,fullscreen} from './menu.js';
 import {padLabels} from './gamepad.js';
+import {dualsense} from './dualsense.js';
 measureDisplay();
 const $=id=>document.getElementById(id),pad=i=>String(i).padStart(2,'0'),safe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cache=new Map();
@@ -189,11 +190,13 @@ const prefs=[
     ['gearbox','Gearbox',[['auto','Automatic'],['manual','Manual']],'auto','Automatic shifts for you. A paddle press takes manual control at any time.'],
     ['line','Racing line',[['on','On'],['off','Off']],'on','Draws the recorded 2025 line on the road.'],
     ['sound','Sound',[['on','On'],['off','Off']],'on','Engine, tyre and menu sound.'],
-    ['vibration','Controller vibration',[['strong','Strong'],['on','Standard'],['light','Light'],['off','Off']],'strong','Engine, gear shifts, braking, cornering load, slides, kerbs, surfaces and contact all reach the controller. Xbox controllers in Chrome and Edge on Windows also rumble in the triggers.']]]
+    ['vibration','Controller vibration',[['strong','Strong'],['on','Standard'],['light','Light'],['off','Off']],'strong','Engine, gear shifts, braking, cornering load, slides, kerbs, surfaces and contact all reach the controller. Xbox controllers in Chrome and Edge on Windows also rumble in the triggers.'],
+    ['triggers','Adaptive triggers',[['on','On'],['off','Off']],'on','PlayStation DualSense only, over USB or Bluetooth in Chrome or Edge. L2 pushes back harder under braking and judders when a tyre locks. R2 is a light spring that buzzes on wheelspin, the rev limiter and gear changes. Connect the controller below once and it reconnects on later visits.']]]
 ];
 function settingsView(){
   $('settingsBody').innerHTML='<div class="prefs"><div>'+prefs.map(([title,rows])=>'<h3>'+title+'</h3>'+rows.map(([id,label,options,,note])=>
     '<div class="pref"><span>'+label+'</span><select id="'+id+'" aria-label="'+label+'">'+options.map(([value,name])=>'<option value="'+value+'">'+name+'</option>').join('')+'</select><p>'+note+'</p></div>').join('')).join('')+
+    (dualsense.supported?'<h3>Controller</h3><button id="dualsense" class="pref"><span>DualSense adaptive triggers</span><kbd>'+(dualsense.ready?'Connected · '+(dualsense.transport==='bluetooth'?'Bluetooth':'USB'):dsError||'Connect')+'</kbd></button>':'')+
     '<h3>Display</h3><button id="fullscreen" class="pref"><span>Fullscreen</span><kbd>F</kbd></button>'+(installPrompt?'<button id="install" class="pref"><span>Install as an app</span>'+arrow+'</button>':'')+
     '<h3>About</h3><button id="credits" class="pref"><span>Circuit and car data</span>'+arrow+'</button></div><aside class="pref-note" id="prefNote"></aside></div>';
   for(const [,rows] of prefs)for(const [id,,,fallback] of rows){
@@ -207,11 +210,17 @@ function settingsView(){
   };
   body.onpointerover=body.onfocusin=event=>note(event.target);note(body.querySelector('.pref'));
   bind('credits',credits);bind('fullscreen',fullscreen);
+  if($('dualsense'))bind('dualsense',async()=>{
+    dsError='';
+    try{await dualsense.connect();}catch(error){if(error.name!=='NotFoundError')dsError='Could not open';}
+    settingsView();
+  });
   if($('install'))bind('install',async()=>{await installPrompt.prompt();installPrompt=null;settingsView();});
 }
 // Chrome and Edge offer an install prompt once the offline cache is ready.
 // The hosted preview's sign-in proxy refuses worker scripts, so the cache is only registered elsewhere.
-let installPrompt=null;
+let installPrompt=null,dsError='';
+dualsense.restore();
 addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;if(view==='settings')settingsView();});
 if(import.meta.env.PROD&&'serviceWorker' in navigator&&!location.hostname.endsWith('.devinapps.com'))navigator.serviceWorker.register('./sw.js').catch(()=>{});
 function firstDrive(){
